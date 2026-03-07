@@ -1,13 +1,4 @@
--- some minimal config
-vim.g.mapleader = ","
-vim.g.maplocalleader = "\\"
-vim.cmd([[
-    filetype on
-    filetype indent on
-    filetype plugin on
-    syntax on
-]])
-vim.cmd.colorscheme("elflord")
+-- Load this with `:luafile` when doing manual tests and not using `--headless`.
 
 -- setup cmp to test tag/link auto-completion
 local cmp = require("cmp")
@@ -93,3 +84,4 @@ local builtin = require("telescope.builtin")
 vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope Find Files" })
 vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Telescope Live Grep" })
 vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Telescope Buffers" })
+

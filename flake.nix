@@ -17,21 +17,25 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         customRC = ''
-          luafile ./init.lua
+          " manually add each plugin dependency to rtp so we can load them from plenary tests.
+          set rtp+=${pkgs.vimPlugins.nvim-cmp}
+          set rtp+=${pkgs.vimPlugins.neo-tree-nvim}
+          set rtp+=${pkgs.vimPlugins.telescope-nvim}
+          set rtp+=${pkgs.vimPlugins.telescope-fzf-native-nvim}
+          set rtp+=${pkgs.vimPlugins.mattn-calendar-vim}
+          set rtp+=${pkgs.vimPlugins.which-key-nvim}
+          luafile ./scripts/init.lua
         '';
         runtimeInputs = with pkgs; [
           ripgrep
           fd
           fzf
-          lua54Packages.luacheck
-          stylua
         ];
         neovimWrapped = pkgs.wrapNeovim pkgs.neovim-unwrapped {
           configure = {
             inherit customRC;
             packages.myVimPackage = with pkgs.vimPlugins; {
               start = [
-                lz-n
                 nvim-cmp
                 cmp-buffer
                 cmp-path
@@ -49,10 +53,11 @@
             };
           };
         };
+
         app = pkgs.writeShellApplication {
           name = "nvim-pkms";
           text = ''
-            exec ${neovimWrapped}/bin/nvim "$@"
+            ${neovimWrapped}/bin/nvim "$@"
           '';
           inherit runtimeInputs;
         };
@@ -60,6 +65,7 @@
       {
         packages = {
           default = app;
+          neovimWrapped = neovimWrapped;
         };
         apps = {
           default = {
@@ -73,6 +79,9 @@
               with pkgs;
               [
                 opencode
+                lua54Packages.luacheck
+                stylua
+                vimPlugins.nvim-cmp
               ]
               ++ runtimeInputs;
             shellHook = ''
