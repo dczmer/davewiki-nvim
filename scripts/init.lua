@@ -10,6 +10,5 @@ vim.cmd([[
 vim.cmd.colorscheme("elflord")
 
 vim.cmd([[
-    set rtp+=./lua
-    set rtp+=./plugin
+    set rtp+=.
 ]])

@@ -23,7 +23,7 @@ Run tests using `nix run`. The wrapped-version of neovim provided by flake.nix i
 
 Example of running a test:
 ```bash
-nix run . -- --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki_spec.lua' -c 'qa!'
+nix run . -- --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki-core_spec.lua' -c 'qa!'
 ```
 
 ```bash
