@@ -224,8 +224,8 @@ M.insert_tag = function(opts)
                     actions.close(prompt_bufnr)
 
                     if selection then
-                        local tag = "#" .. selection.value.tag
-                        vim.api.nvim_put({ tag }, "c", true, true)
+                        local link = wiki.build_tag_link(selection.value.tag)
+                        vim.api.nvim_put({ link }, "c", true, true)
                     end
                 end)
                 return true
