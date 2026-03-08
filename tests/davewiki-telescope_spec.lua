@@ -58,16 +58,6 @@ describe("davewiki-telescope", function()
     end)
 
     describe("search_headings", function()
-        local original_get_all_headings
-
-        before_each(function()
-            original_get_all_headings = require("davewiki-telescope").get_all_headings
-        end)
-
-        after_each(function()
-            -- We can't easily restore the function, but we're testing that it exists
-        end)
-
         it("should be defined", function()
             assert.is_function(telescope.search_headings)
         end)

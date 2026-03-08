@@ -84,7 +84,7 @@ M.backlinks = function(opts)
     opts = opts or {}
 
     local current_path = wiki.get_current_wiki_path()
-    local backlinks = get_backlinks(current_path)
+    local backlinks = wiki.get_backlinks(current_path)
 
     if #backlinks == 0 then
         print("No backlinks found")
@@ -266,7 +266,6 @@ M.search_headings = function(opts)
 end
 
 M.wiki_grep = function(opts)
-    opts = opts or {}
     require("telescope.builtin").live_grep({
         cwd = wiki.get_wiki_root(),
         additional_args = function()
