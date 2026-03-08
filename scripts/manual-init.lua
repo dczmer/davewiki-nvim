@@ -70,10 +70,6 @@ cmp.setup({
     }),
 })
 
--- setup neotree
-require("neo-tree").setup({})
-vim.keymap.set("n", "<leader>tt", "<CMD>Neotree toggle<CR>", { desc = "Toggle NeoTree" })
-
 -- setup whichkey
 require("which-key").setup({})
 vim.keymap.set("n", "<leader>?", function()

@@ -19,7 +19,6 @@
         customRC = ''
           " manually add each plugin dependency to rtp so we can load them from plenary tests.
           set rtp+=${pkgs.vimPlugins.nvim-cmp}
-          set rtp+=${pkgs.vimPlugins.neo-tree-nvim}
           set rtp+=${pkgs.vimPlugins.telescope-nvim}
           set rtp+=${pkgs.vimPlugins.telescope-fzf-native-nvim}
           set rtp+=${pkgs.vimPlugins.mattn-calendar-vim}
@@ -45,7 +44,6 @@
                 telescope-fzf-native-nvim
                 vim-markdown
                 mattn-calendar-vim
-                neo-tree-nvim
                 #snacks-nvim
                 which-key-nvim
                 plenary-nvim

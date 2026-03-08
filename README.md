@@ -6,7 +6,6 @@ Dependencies:
 - telescope-nvim: Provides interface for searching and grepping for documents, tags, and links in the vault.
 - nvim-cmp: Provides the auto-completion interface for inserting tags, filenames, and links.
 - mattn-calendar-vim: Provides date and calendar features used for daily journals.
-- (Optional) neo-tree-nvim: Provides a file-explorer interface.
 - (Optional) which-key-nvim: All key mappings use a `desc` property to describe it's function, which will be used by which-key.
 
 Overview:

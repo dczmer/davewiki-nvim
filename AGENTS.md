@@ -146,7 +146,6 @@ vim.keymap.set("n", "<leader>tt", function() ... end, { desc = "Toggle NeoTree" 
 | `telescope-nvim` + `telescope-fzf-native-nvim` | Fuzzy search interface |
 | `nvim-cmp` + `cmp-buffer` + `cmp-path` + `cmp-nvim-lsp` + `cmp-nvim-lsp-signature-help` | Auto-completion |
 | `mattn-calendar-vim` | Calendar/date features for journals |
-| `neo-tree-nvim` | File explorer sidebar |
 | `which-key-nvim` | Keybinding discovery |
 | `vim-markdown` | Markdown syntax and features |
 | `lz-n` | Lazy loading framework (available but not yet used) |
