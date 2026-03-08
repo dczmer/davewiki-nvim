@@ -27,6 +27,4 @@ This project uses a nix flake to provide a devShell with all of the required dep
 
 The flake packages an instance of neovim along with the dependencies required for this project, and a simple configuration file to bootstrap the plugin environment.
 
-The core implementation is in a Lua library `./lua/davwiki.lua` and uses `plenary-nvim` for unit tests.
-
 This project uses `luacheck` for linting and `stylua` for auto-formatting files.
