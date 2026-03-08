@@ -10,7 +10,7 @@ read_globals = {
 -- Plugin files can set vim.g globals
 files["plugin/**/*.lua"] = {
     ignore = {
-        "122",
+        "122", -- Setting read-only field of global (vim.g.davewiki_root)
     },
 }
 
@@ -25,9 +25,9 @@ files["tests/**/*.lua"] = {
         "pending",
     },
     ignore = {
-        "121",
-        "122",
-        "211",
-        "212",
+        "121", -- Setting read-only field of global (mocking vim.api, vim.fn, io.open, etc.)
+        "122", -- Setting read-only field of global (same as 121, for nested fields)
+        "211", -- Unused variable (test setup/teardown often has unused variables)
+        "212", -- Unused argument (mock functions don't use all parameters)
     },
 }
