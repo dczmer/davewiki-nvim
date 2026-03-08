@@ -4,7 +4,7 @@ local M = {}
 -- CONFIGURATION
 -- ==================================================================
 
-local wiki_root = vim.fn.expand("~/vimwiki")
+local wiki_root = vim.fn.expand(vim.g.davewiki_root or "~/vimwiki")
 
 M.get_wiki_root = function()
     return wiki_root
