@@ -13,7 +13,7 @@ describe("davewiki-telescope", function()
     describe("backlinks", function()
         local original_get_current_wiki_path
         local original_get_backlinks
-        
+
         before_each(function()
             original_get_current_wiki_path = davwiki.get_current_wiki_path
             original_get_backlinks = davwiki.get_backlinks
@@ -37,7 +37,7 @@ describe("davewiki-telescope", function()
 
     describe("search_by_tag", function()
         local original_ripgrep
-        
+
         before_each(function()
             original_ripgrep = davwiki.ripgrep
         end)
@@ -59,7 +59,7 @@ describe("davewiki-telescope", function()
 
     describe("search_headings", function()
         local original_get_all_headings
-        
+
         before_each(function()
             original_get_all_headings = require("davewiki-telescope").get_all_headings
         end)
