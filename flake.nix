@@ -29,6 +29,8 @@
           ripgrep
           fd
           fzf
+          lua54Packages.luacheck
+          stylua
         ];
         neovimWrapped = pkgs.wrapNeovim pkgs.neovim-unwrapped {
           configure = {
@@ -70,18 +72,18 @@
             type = "app";
             program = "${app}/bin/nvim-pkms";
           };
+          luacheck = {
+            type = "app";
+            program = "${pkgs.lua54Packages.luacheck}/bin/luacheck";
+          };
+          stylua = {
+            type = "app";
+            program = "${pkgs.stylua}/bin/stylua";
+          };
         };
         devShells = {
           default = pkgs.mkShell {
-            packages =
-              with pkgs;
-              [
-                opencode
-                lua54Packages.luacheck
-                stylua
-                vimPlugins.nvim-cmp
-              ]
-              ++ runtimeInputs;
+            packages = runtimeInputs;
             shellHook = ''
               # enable opencode extra tools for this shell
               OPENCODE_ENABLE_EXA=1 exec zsh

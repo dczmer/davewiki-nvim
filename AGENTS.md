@@ -30,10 +30,10 @@ nix run . -- --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki
 
 ```bash
 # Lint all Lua source files
-luacheck lua/ plugin/
+nix run .#luacheck -- lua/ plugin/ tests/
 
 # Format all Lua source files (run before every commit)
-stylua lua/ plugin/
+nix run .#stylua -- lua/ plugin/ tests/
 ```
 
 ### Testing (plenary-nvim busted framework)

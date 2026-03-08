@@ -9,7 +9,7 @@ test:
 	done
 
 lint:
-	luacheck lua/ plugin/ tests/
+	nix run .#luacheck -- lua/ plugin/ tests/
 
 format:
-	stylua lua/ plugin/ tests/
+	nix run .#stylua -- lua/ plugin/ tests/
