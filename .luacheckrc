@@ -7,6 +7,13 @@ read_globals = {
     "vim",
 }
 
+-- Plugin files can set vim.g globals
+files["plugin/**/*.lua"] = {
+    ignore = {
+        "122",
+    },
+}
+
 -- Test files use plenary busted globals
 files["tests/**/*.lua"] = {
     read_globals = {
@@ -16,5 +23,11 @@ files["tests/**/*.lua"] = {
         "after_each",
         "assert",
         "pending",
+    },
+    ignore = {
+        "121",
+        "122",
+        "211",
+        "212",
     },
 }
