@@ -344,4 +344,186 @@ describe("davewiki-core", function()
             assert.equals("text [#tag](source/#tag.md)", new_line)
         end)
     end)
+
+    describe("follow_tag_link", function()
+        local original_win_get_cursor
+        local original_buf_get_lines
+        local original_cmd
+        local original_fn
+        local original_notify
+        local test_wiki_root
+
+        before_each(function()
+            original_win_get_cursor = vim.api.nvim_win_get_cursor
+            original_buf_get_lines = vim.api.nvim_buf_get_lines
+            original_cmd = vim.cmd
+            original_fn = vim.fn
+            original_notify = vim.notify
+            test_wiki_root = "/home/testuser/vimwiki"
+
+            vim.fn.expand = function(path)
+                if path == "~/vimwiki" or path == vim.g.davewiki_root then
+                    return test_wiki_root
+                end
+                if path:sub(1, #test_wiki_root) == test_wiki_root then
+                    return path
+                end
+                return path
+            end
+        end)
+
+        after_each(function()
+            vim.api.nvim_win_get_cursor = original_win_get_cursor
+            vim.api.nvim_buf_get_lines = original_buf_get_lines
+            vim.cmd = original_cmd
+            vim.fn = original_fn
+            vim.notify = original_notify
+        end)
+
+        it("should return false when cursor is not on a link", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 0 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "no link here" }
+            end
+
+            local result = davwiki.follow_tag_link()
+            assert.is_false(result)
+        end)
+
+        it("should return false when link is not a tag link", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [link](other.md) more" }
+            end
+
+            local result = davwiki.follow_tag_link()
+            assert.is_false(result)
+        end)
+
+        it("should open tag file when cursor is on tag link", function()
+            local captured_cmd = {}
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [#tag](source/#tag.md) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.filereadable = function()
+                return 1
+            end
+            vim.fn.fnameescape = function(path)
+                return path
+            end
+
+            local result = davwiki.follow_tag_link()
+            assert.is_true(result)
+            assert.is_true(#captured_cmd > 0)
+            assert.matches("edit", captured_cmd[1])
+        end)
+
+        it("should handle URL-encoded tag names", function()
+            local captured_cmd = {}
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [#my tag](source/#my%20tag.md) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.filereadable = function()
+                return 1
+            end
+            vim.fn.fnameescape = function(path)
+                return path
+            end
+
+            local result = davwiki.follow_tag_link()
+            assert.is_true(result)
+        end)
+
+        it("should create tag file when it does not exist", function()
+            local captured_cmd = {}
+            local captured_mkdir = {}
+            local captured_file_content = {}
+
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [#tag](source/#tag.md) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.filereadable = function()
+                return 0
+            end
+            vim.fn.fnamemodify = function(path, modifier)
+                if modifier == ":h" then
+                    return path:gsub("/[^/]+$", "")
+                end
+                return path
+            end
+            vim.fn.mkdir = function(dir, flags)
+                table.insert(captured_mkdir, dir)
+            end
+            vim.fn.fnameescape = function(path)
+                return path
+            end
+
+            local original_io_open = io.open
+            io.open = function(path, mode)
+                if mode == "w" then
+                    local mock_file = {
+                        write = function(self, content)
+                            table.insert(captured_file_content, content)
+                        end,
+                        close = function() end,
+                    }
+                    return mock_file
+                end
+                return nil
+            end
+
+            local result = davwiki.follow_tag_link()
+            assert.is_true(result)
+            assert.is_true(#captured_cmd > 0)
+            assert.is_true(#captured_mkdir > 0)
+            assert.is_true(#captured_file_content > 0)
+            assert.matches("# tag", captured_file_content[1])
+
+            io.open = original_io_open
+        end)
+
+        it("should handle ./source/ path prefix", function()
+            local captured_cmd = {}
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [#tag](./source/#tag.md) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.filereadable = function()
+                return 1
+            end
+            vim.fn.fnameescape = function(path)
+                return path
+            end
+
+            local result = davwiki.follow_tag_link()
+            assert.is_true(result)
+        end)
+    end)
 end)

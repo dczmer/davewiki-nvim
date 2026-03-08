@@ -271,4 +271,70 @@ M.convert_word_to_tag_link = function()
     return false
 end
 
+--- Opens the tag file if cursor is over a markdown link to a tag file.
+--- Checks if cursor is positioned within a markdown link pattern like [#tag](source/#tag.md).
+--- If found and it's a tag link, opens the target file in the current buffer.
+--- @return boolean true if a tag link was found and opened, false otherwise
+M.follow_tag_link = function()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local row = cursor[1]
+    local col = cursor[2]
+
+    local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1]
+    if not line then
+        return false
+    end
+
+    local function find_link_at_cursor()
+        local start_pos = 1
+        while true do
+            local link_start, link_end, link_text, link_url = line:find("%[([^%]]+)%]%(([^%)]+)%)", start_pos)
+            if not link_start then
+                return nil
+            end
+
+            local link_col_start = link_start - 1
+            local link_col_end = link_end - 1
+
+            if col >= link_col_start and col <= link_col_end then
+                return link_text, link_url
+            end
+
+            start_pos = link_end + 1
+        end
+    end
+
+    local _, link_url = find_link_at_cursor()
+    if not link_url then
+        return false
+    end
+
+    if link_url:match("^%./source/") or link_url:match("^source/") then
+        local decoded_path = M.url_decode(link_url:gsub("^%./", ""):gsub("^source/", "source/"))
+        local full_path = M.get_journal_dir() .. "/" .. decoded_path
+
+        if vim.fn.filereadable(full_path) == 1 then
+            vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+            return true
+        else
+            local dir = vim.fn.fnamemodify(full_path, ":h")
+            vim.fn.mkdir(dir, "p")
+
+            local tag_name = decoded_path:match("#([^/]+)%.md$")
+            if tag_name then
+                local file = io.open(full_path, "w")
+                if file then
+                    file:write("# " .. tag_name .. "\n")
+                    file:close()
+                end
+            end
+
+            vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+            return true
+        end
+    end
+
+    return false
+end
+
 return M
