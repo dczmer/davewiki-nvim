@@ -69,53 +69,59 @@ end
 -- TAG EXTRACTION
 -- ==================================================================
 
-M.get_all_tags = function()
+M.url_decode = function(str)
+    return (str:gsub("%%(%x%x)", function(h)
+        return string.char(tonumber(h, 16))
+    end))
+end
+
+M.url_encode = function(str)
+    return (str:gsub("[^%w%-_~]", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end))
+end
+
+M.find_tags = function()
     local lines = M.ripgrep({
-        '"#[a-zA-Z0-9_-]+"',
-        "--only-matching",
-        "--no-filename",
-        "--no-line-number",
         "--type=markdown",
         wiki_root,
     })
 
-    local tag_counts = {}
+    local tag_data = {}
+
     for _, line in ipairs(lines) do
-        local tag = line:match("#([a-zA-Z0-9_-]+)")
-        if tag then
-            tag_counts[tag] = (tag_counts[tag] or 0) + 1
+        local link_text, file_path = line:match("%[([^%]]+)%]%(([^%)]+)%)")
+        if link_text and file_path and file_path:match("^source/") then
+            if link_text:match("^#") then
+                local tag = link_text:sub(2)
+                local decoded_path = M.url_decode(file_path:gsub("^source/", ""))
+
+                if not tag_data[tag] then
+                    tag_data[tag] = { count = 0, files = {} }
+                end
+                tag_data[tag].count = tag_data[tag].count + 1
+
+                local found = false
+                for _, f in ipairs(tag_data[tag].files) do
+                    if f == decoded_path then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    table.insert(tag_data[tag].files, decoded_path)
+                end
+            end
         end
     end
 
     local tags = {}
-    for tag, count in pairs(tag_counts) do
-        table.insert(tags, { tag = tag, count = count })
-    end
-
-    table.sort(tags, function(a, b)
-        if a.count == b.count then
-            return a.tag < b.tag
-        end
-        return a.count > b.count
-    end)
-
-    return tags
-end
-
-M.get_buffer_tags = function()
-    local bufnr = vim.api.nvim_get_current_buf()
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-
-    local tag_counts = {}
-    for _, line in ipairs(lines) do
-        for tag in line:gmatch("#([a-zA-Z0-9_-]+)") do
-            tag_counts[tag] = (tag_counts[tag] or 0) + 1
-        end
-    end
-
-    local tags = {}
-    for tag, count in pairs(tag_counts) do
-        table.insert(tags, { tag = tag, count = count })
+    for tag, data in pairs(tag_data) do
+        table.insert(tags, {
+            tag = tag,
+            count = data.count,
+            files = data.files,
+        })
     end
 
     table.sort(tags, function(a, b)

@@ -142,4 +142,78 @@ describe("davewiki-core", function()
             assert.is_table(tags)
         end)
     end)
+
+    describe("url_encode", function()
+        it("should URL encode spaces", function()
+            local encoded = davwiki.url_encode("my notes")
+            assert.equals("my%20notes", encoded)
+        end)
+
+        it("should not encode alphanumeric characters", function()
+            local encoded = davwiki.url_encode("hello world")
+            assert.equals("hello%20world", encoded)
+        end)
+
+        it("should handle special characters", function()
+            local encoded = davwiki.url_encode("file(1).md")
+            assert.equals("file%281%29%2Emd", encoded)
+        end)
+    end)
+
+    describe("url_decode", function()
+        it("should URL decode spaces", function()
+            local decoded = davwiki.url_decode("my%20notes")
+            assert.equals("my notes", decoded)
+        end)
+
+        it("should decode multiple encoded characters", function()
+            local decoded = davwiki.url_decode("hello%20world%21")
+            assert.equals("hello world!", decoded)
+        end)
+    end)
+
+    describe("find_tags", function()
+        local original_ripgrep
+
+        before_each(function()
+            original_ripgrep = davwiki.ripgrep
+        end)
+
+        after_each(function()
+            davwiki.ripgrep = original_ripgrep
+        end)
+
+        it("should return empty table when no tags found", function()
+            davwiki.ripgrep = function()
+                return {}
+            end
+            local tags = davwiki.find_tags()
+            assert.is_table(tags)
+            assert.equals(0, #tags)
+        end)
+
+        it("should find tags from markdown links", function()
+            davwiki.ripgrep = function()
+                return {
+                    "[#My Tag](source/my%20note.md)",
+                    "[#Another](source/another.md)",
+                }
+            end
+            local tags = davwiki.find_tags()
+            assert.is_table(tags)
+            assert.equals(2, #tags)
+        end)
+
+        it("should include files in results", function()
+            davwiki.ripgrep = function()
+                return {
+                    "[#My Tag](source/my%20note.md)",
+                }
+            end
+            local tags = davwiki.find_tags()
+            assert.equals("My Tag", tags[1].tag)
+            assert.is_table(tags[1].files)
+            assert.equals("my note.md", tags[1].files[1])
+        end)
+    end)
 end)
