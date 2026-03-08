@@ -84,14 +84,16 @@ end
 M.find_tags = function()
     local lines = M.ripgrep({
         "--type=markdown",
+        "'\\[#'",
         wiki_root,
     })
 
     local tag_data = {}
 
     for _, line in ipairs(lines) do
-        local link_text, file_path = line:match("%[([^%]]+)%]%(([^%)]+)%)")
+        local link_text, file_path = line:match("%[#([^%]]+)%]%(([^%)]+)%)")
         if link_text and file_path and (file_path:match("^%./source/") or file_path:match("^source/")) then
+            link_text = "#" .. link_text
             if link_text:match("^#") then
                 local tag = link_text:sub(2)
                 local decoded_path = M.url_decode(file_path:gsub("^%./source/", ""):gsub("^source/", ""))
@@ -109,7 +111,7 @@ M.find_tags = function()
                     end
                 end
                 if not found then
-                    table.insert(tag_data[tag].files, decoded_path)
+                    table.insert(tag_data[tag].files, "source/" .. decoded_path)
                 end
             end
         end

@@ -1,10 +1,10 @@
-# AGENTS.md - Development Guide for nvim-pkms
+# AGENTS.md - Development Guide for davewiki-nvim
 
 ## Project Overview
 
-Neovim plugin implementing a Personal Knowledge Management System (PKMS), similar to Logseq/Obsidian. Written in Lua, built and managed entirely via a Nix flake. The core module is `davwiki` (source in `lua/davwiki/`).
+Neovim plugin implementing a Personal Knowledge Management System (PKMS), similar to Logseq/Obsidian. Written in Lua, built and managed entirely via a Nix flake. The core module is `davewiki-core` (source in `lua/davewiki-core.lua`).
 
-Key concepts: journal files (`{root}/journals`), tag files (`{root}/tags`, prefixed with `#`), and hierarchical notes (`{root}/notes`). Content is organized in indented "blocks" that can be extracted by tag for cross-document aggregation.
+Key concepts: journal files (`{root}/journals`), tag files (`{root}/source/#tagname.md`), and hierarchical notes (`{root}/notes`). Content is organized in indented "blocks" that can be extracted by tag for cross-document aggregation.
 
 ## Development Environment
 
@@ -14,6 +14,8 @@ All dependencies are managed via `flake.nix` -- there is no lazy.nvim, packer, o
 nix develop   # Enter dev shell (provides luacheck, stylua, ripgrep, fd, fzf)
 nix run       # Launch wrapped Neovim with all plugins loaded
 ```
+
+If a source file cannot be found when running `nix run`, ensure the file has been added to the git index. Using `nix run` on a flake will not see files that are not added to the git repository.
 
 The bootstrap config `init.lua` is loaded automatically by the Nix-wrapped Neovim. Leader key is `,`, local leader is `\`.
 
@@ -28,28 +30,20 @@ nix run . -- --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki
 
 ```bash
 # Lint all Lua source files
-luacheck lua/
+luacheck lua/ plugin/
 
 # Format all Lua source files (run before every commit)
-stylua lua/
+stylua lua/ plugin/
 ```
 
 ### Testing (plenary-nvim busted framework)
 
-```vim
-" Run all tests (from within Neovim started via `nix run`)
-:PlenaryBustedDirectory tests/ {minimal_init = './init.lua'}
-
-" Run a single test file
-:PlenaryBustedFile tests/some_test.lua
-```
-
-Test files go in the `tests/` directory. Use plenary's busted-style DSL:
+Test files go in the `tests/` directory. Use plenary's busted-style DSL. Name test files using the convention `{module_name}_spec.lua`:
 
 ```lua
-describe("davwiki.tags", function()
+describe("davewiki.tags", function()
     it("should parse tags from text", function()
-        local tags = require("davwiki.tags")
+        local tags = require("davewiki.tags")
         local result = tags.parse("#hello #world")
         assert.equals(2, #result)
     end)
@@ -61,11 +55,12 @@ Keep tests focused and independent. Mock `vim.*` functions when testing pure log
 ## File Structure
 
 ```
-nvim-pkms/
+davewiki-nvim/
 ├── init.lua           -- Neovim bootstrap config (cmp, telescope, neo-tree, which-key)
-├── lua/davwiki/       -- Core plugin source (module: require("davwiki"))
-│   └── *.lua          -- Submodules (utils, tags, journals, etc.)
-├── plugin/            -- Neovim auto-loaded scripts (commands, autocommands)
+├── lua/               -- Core plugin source
+│   └── davewiki-core.lua  -- Main module (require("davewiki-core"))
+├── plugin/            -- Neovim auto-loaded scripts
+│   └── davewiki.lua  -- Plugin setup module
 ├── doc/               -- Neovim help documentation
 ├── tests/             -- Plenary busted test files
 ├── flake.nix          -- Nix flake (build, devShell, dependencies)
@@ -162,7 +157,7 @@ vim.keymap.set("n", "<leader>tt", function() ... end, { desc = "Toggle NeoTree" 
 
 ## Configuration
 
-- Root directory: `vim.g.davewiki_root`
+- Root directory: `vim.g.davewiki_root` (defaults to `~/vimwiki`)
 - Journals: `{root}/journals`
-- Tags: `{root}/tags`
+- Tags: `{root}/source/#tagname.md`
 - Notes: `{root}/notes`
