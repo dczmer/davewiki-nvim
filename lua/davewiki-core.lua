@@ -4,14 +4,12 @@ local M = {}
 -- CONFIGURATION
 -- ==================================================================
 
-local wiki_root = vim.fn.expand(vim.g.davewiki_root or "~/vimwiki")
-
 M.get_wiki_root = function()
-    return wiki_root
+    return vim.fn.expand(vim.g.davewiki_root or "~/vimwiki")
 end
 
 M.get_journal_dir = function()
-    return wiki_root .. "/journal"
+    return M.get_wiki_root() .. "/journal"
 end
 
 -- ==================================================================
@@ -20,7 +18,7 @@ end
 
 M.get_relative_path = function(filepath)
     local expanded = vim.fn.expand(filepath)
-    local root = vim.fn.expand(wiki_root)
+    local root = M.get_wiki_root()
     if expanded:sub(1, #root) == root then
         return expanded:sub(#root + 2)
     end
@@ -85,7 +83,7 @@ M.find_tags = function()
     local lines = M.ripgrep({
         "--type=markdown",
         "'\\[#'",
-        wiki_root,
+        M.get_wiki_root(),
     })
 
     local tag_data = {}
@@ -134,6 +132,61 @@ M.find_tags = function()
     end)
 
     return tags
+end
+
+M.find_tag_links = function(tag_name)
+    local pattern = tag_name and string.format("'\\[#%s\\]'", tag_name) or "'\\[#'"
+    local lines = M.ripgrep({
+        "--type=markdown",
+        pattern,
+        M.get_wiki_root(),
+    })
+
+    local file_data = {}
+
+    for _, line in ipairs(lines) do
+        local source_file, link_text = line:match("^([^:]+):.*%[#([^%]]+)%]")
+        if source_file and link_text then
+            if not tag_name or link_text == tag_name then
+                local relative_path = M.get_relative_path(source_file)
+                local tag = "#" .. link_text
+
+                if not file_data[relative_path] then
+                    file_data[relative_path] = { count = 0, tags = {} }
+                end
+
+                local found = false
+                for _, t in ipairs(file_data[relative_path].tags) do
+                    if t == tag then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    table.insert(file_data[relative_path].tags, tag)
+                    file_data[relative_path].count = file_data[relative_path].count + 1
+                end
+            end
+        end
+    end
+
+    local files = {}
+    for filepath, data in pairs(file_data) do
+        table.insert(files, {
+            filepath = filepath,
+            count = data.count,
+            tags = data.tags,
+        })
+    end
+
+    table.sort(files, function(a, b)
+        if a.count == b.count then
+            return a.filepath < b.filepath
+        end
+        return a.count > b.count
+    end)
+
+    return files
 end
 
 M.convert_word_to_tag_link = function()

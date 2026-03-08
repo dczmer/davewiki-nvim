@@ -176,6 +176,90 @@ describe("davewiki-core", function()
         end)
     end)
 
+    describe("find_tag_links", function()
+        local original_ripgrep
+        local original_fn_expand
+        local test_wiki_root
+
+        before_each(function()
+            original_ripgrep = davwiki.ripgrep
+            original_fn_expand = vim.fn.expand
+            test_wiki_root = "/home/testuser/vimwiki"
+            vim.fn.expand = function(path)
+                if path == "~/vimwiki" or path == vim.g.davewiki_root then
+                    return test_wiki_root
+                end
+                if path:sub(1, #test_wiki_root) == test_wiki_root then
+                    return path
+                end
+                return path
+            end
+        end)
+
+        after_each(function()
+            davwiki.ripgrep = original_ripgrep
+            vim.fn.expand = original_fn_expand
+        end)
+
+        it("should return empty table when no tag links found", function()
+            davwiki.ripgrep = function()
+                return {}
+            end
+            local files = davwiki.find_tag_links()
+            assert.is_table(files)
+            assert.equals(0, #files)
+        end)
+
+        it("should find tag links from markdown files", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test1.md:[#My Tag](source/#My%20Tag.md)",
+                    test_wiki_root .. "/notes/test2.md:[#Another](source/#Another.md)",
+                }
+            end
+            local files = davwiki.find_tag_links()
+            assert.is_table(files)
+            assert.equals(2, #files)
+        end)
+
+        it("should include tags in file results", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:[#My Tag](source/#My%20Tag.md)",
+                }
+            end
+            local files = davwiki.find_tag_links()
+            assert.equals("notes/test.md", files[1].filepath)
+            assert.is_table(files[1].tags)
+            assert.equals("#My Tag", files[1].tags[1])
+        end)
+
+        it("should deduplicate tags within same file", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:[#My Tag](source/#My%20Tag.md)",
+                    test_wiki_root .. "/notes/test.md:[#My Tag](source/#My%20Tag.md)",
+                }
+            end
+            local files = davwiki.find_tag_links()
+            assert.equals(1, #files[1].tags)
+            assert.equals(1, files[1].count)
+        end)
+
+        it("should filter results by specific tag name", function()
+            davwiki.ripgrep = function(args)
+                assert.is_true(#args > 0)
+                return {
+                    test_wiki_root .. "/notes/test1.md:[#My Tag](source/#My%20Tag.md)",
+                    test_wiki_root .. "/notes/test2.md:[#My Tag](source/#Another.md)",
+                    test_wiki_root .. "/notes/test3.md:[#Other Tag](source/#Other.md)",
+                }
+            end
+            local files = davwiki.find_tag_links("My Tag")
+            assert.equals(2, #files)
+        end)
+    end)
+
     describe("convert_word_to_tag_link", function()
         local original_win_get_cursor
         local original_get_current_line
