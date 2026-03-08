@@ -141,8 +141,8 @@ describe("davewiki-core", function()
         it("should find tags from markdown links", function()
             davwiki.ripgrep = function()
                 return {
-                    "[#My Tag](source/my%20note.md)",
-                    "[#Another](source/another.md)",
+                    "[#My Tag](source/#My%20Tag.md)",
+                    "[#Another](source/#Another.md)",
                 }
             end
             local tags = davwiki.find_tags()
@@ -153,7 +153,7 @@ describe("davewiki-core", function()
         it("should find tags with ./source/ path prefix", function()
             davwiki.ripgrep = function()
                 return {
-                    "[#test-tag](./source/%23test-tag.md)",
+                    "[#test-tag](./source/#test-tag.md)",
                 }
             end
             local tags = davwiki.find_tags()
@@ -166,13 +166,98 @@ describe("davewiki-core", function()
         it("should include files in results", function()
             davwiki.ripgrep = function()
                 return {
-                    "[#My Tag](source/my%20note.md)",
+                    "[#My Tag](source/#My%20Tag.md)",
                 }
             end
             local tags = davwiki.find_tags()
             assert.equals("My Tag", tags[1].tag)
             assert.is_table(tags[1].files)
-            assert.equals("my note.md", tags[1].files[1])
+            assert.equals("#My Tag.md", tags[1].files[1])
+        end)
+    end)
+
+    describe("convert_word_to_tag_link", function()
+        local original_win_get_cursor
+        local original_get_current_line
+        local original_set_current_line
+
+        before_each(function()
+            original_win_get_cursor = vim.api.nvim_win_get_cursor
+            original_get_current_line = vim.api.nvim_get_current_line
+            original_set_current_line = vim.api.nvim_set_current_line
+        end)
+
+        after_each(function()
+            vim.api.nvim_win_get_cursor = original_win_get_cursor
+            vim.api.nvim_get_current_line = original_get_current_line
+            vim.api.nvim_set_current_line = original_set_current_line
+        end)
+
+        it("should return false when word does not start with #", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 2 }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "hello world"
+            end
+            vim.api.nvim_set_current_line = function() end
+
+            local result = davwiki.convert_word_to_tag_link()
+            assert.is_false(result)
+        end)
+
+        it("should convert tag to markdown link", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 1 }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "#mytag"
+            end
+
+            local new_line
+            vim.api.nvim_set_current_line = function(line)
+                new_line = line
+            end
+
+            local result = davwiki.convert_word_to_tag_link()
+            assert.is_true(result)
+            assert.equals("[#mytag](source/#mytag.md)", new_line)
+        end)
+
+        it("should URL encode tag names with hyphens", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 1 }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "#dave-is-cool"
+            end
+
+            local new_line
+            vim.api.nvim_set_current_line = function(line)
+                new_line = line
+            end
+
+            local result = davwiki.convert_word_to_tag_link()
+            assert.is_true(result)
+            assert.equals("[#dave-is-cool](source/#dave-is-cool.md)", new_line)
+        end)
+
+        it("should handle tag at end of line", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "text #tag"
+            end
+
+            local new_line
+            vim.api.nvim_set_current_line = function(line)
+                new_line = line
+            end
+
+            local result = davwiki.convert_word_to_tag_link()
+            assert.is_true(result)
+            assert.equals("text [#tag](source/#tag.md)", new_line)
         end)
     end)
 end)

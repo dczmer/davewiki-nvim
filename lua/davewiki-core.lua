@@ -91,7 +91,7 @@ M.find_tags = function()
 
     for _, line in ipairs(lines) do
         local link_text, file_path = line:match("%[([^%]]+)%]%(([^%)]+)%)")
-        if link_text and file_path and file_path:match("^%./source/") or file_path:match("^source/") then
+        if link_text and file_path and (file_path:match("^%./source/") or file_path:match("^source/")) then
             if link_text:match("^#") then
                 local tag = link_text:sub(2)
                 local decoded_path = M.url_decode(file_path:gsub("^%./source/", ""):gsub("^source/", ""))
@@ -132,6 +132,40 @@ M.find_tags = function()
     end)
 
     return tags
+end
+
+M.convert_word_to_tag_link = function()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local col = cursor[2]
+
+    local line = vim.api.nvim_get_current_line()
+    local line_length = #line
+
+    local start_col = col
+    local end_col = col
+
+    while start_col > 0 and line:sub(start_col, start_col):match("[%w%-_#]") do
+        start_col = start_col - 1
+    end
+
+    while end_col < line_length and line:sub(end_col + 1, end_col + 1):match("[%w%-_#]") do
+        end_col = end_col + 1
+    end
+
+    local word = line:sub(start_col + 1, end_col)
+
+    if word:match("^#") then
+        local tag_name = word:sub(2)
+        local encoded_name = M.url_encode(tag_name)
+        local link_text = "#" .. tag_name
+        local link = string.format("[%s](source/#%s.md)", link_text, encoded_name)
+
+        local new_line = line:sub(1, start_col) .. link .. line:sub(end_col + 1)
+        vim.api.nvim_set_current_line(new_line)
+        return true
+    end
+
+    return false
 end
 
 return M
