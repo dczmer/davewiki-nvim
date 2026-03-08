@@ -91,10 +91,10 @@ M.find_tags = function()
 
     for _, line in ipairs(lines) do
         local link_text, file_path = line:match("%[([^%]]+)%]%(([^%)]+)%)")
-        if link_text and file_path and file_path:match("^source/") then
+        if link_text and file_path and file_path:match("^%./source/") or file_path:match("^source/") then
             if link_text:match("^#") then
                 local tag = link_text:sub(2)
-                local decoded_path = M.url_decode(file_path:gsub("^source/", ""))
+                local decoded_path = M.url_decode(file_path:gsub("^%./source/", ""):gsub("^source/", ""))
 
                 if not tag_data[tag] then
                     tag_data[tag] = { count = 0, files = {} }
