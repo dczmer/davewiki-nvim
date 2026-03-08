@@ -232,6 +232,15 @@ M.find_tag_links = function(tag_name)
     return files
 end
 
+--- Builds a markdown tag link from a tag name.
+--- @param tag_name string The tag name to format
+--- @return string The formatted markdown tag link
+M.build_tag_link = function(tag_name)
+    local encoded_name = M.url_encode(tag_name)
+    local link_text = "#" .. tag_name
+    return string.format("[%s](source/#%s.md)", link_text, encoded_name)
+end
+
 --- Converts the word under the cursor to a markdown tag link.
 --- If the cursor is on a word starting with #, replaces it with a markdown link
 --- in the format [#tagname](source/#tagname.md). URL-encodes the tag name in the link.
@@ -259,9 +268,7 @@ M.convert_word_to_tag_link = function()
 
     if word:match("^#") then
         local tag_name = word:sub(2)
-        local encoded_name = M.url_encode(tag_name)
-        local link_text = "#" .. tag_name
-        local link = string.format("[%s](source/#%s.md)", link_text, encoded_name)
+        local link = M.build_tag_link(tag_name)
 
         local new_line = line:sub(1, start_col) .. link .. line:sub(end_col + 1)
         vim.api.nvim_set_current_line(new_line)

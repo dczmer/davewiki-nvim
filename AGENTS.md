@@ -25,15 +25,15 @@ Run tests using `nix run`. The wrapped-version of neovim provided by flake.nix i
 
 Example of running a test:
 ```bash
-nix run . -- --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki-core_spec.lua' -c 'qa!'
+nvim-pkms --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki-core_spec.lua' -c 'qa!'
 ```
 
 ```bash
 # Lint all Lua source files
-nix run .#luacheck -- lua/ plugin/ tests/
+luacheck -- lua/ plugin/ tests/
 
 # Format all Lua source files (run before every commit)
-nix run .#stylua -- lua/ plugin/ tests/
+stylua -- lua/ plugin/ tests/
 ```
 
 ### Testing (plenary-nvim busted framework)
