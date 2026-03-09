@@ -2,9 +2,14 @@
 
 ## Project Overview
 
-Neovim plugin implementing a Personal Knowledge Management System (PKMS), similar to Logseq/Obsidian. Written in Lua, built and managed entirely via a Nix flake. The core module is `davewiki-core` (source in `lua/davewiki-core.lua`).
+Neovim plugin implementing a Personal Knowledge Management System (PKMS), similar to Logseq/Obsidian. Written in Lua, built and managed entirely via a Nix flake.
 
-Key concepts: journal files (`{root}/journals`), tag files (`{root}/source/#tagname.md`), and hierarchical notes (`{root}/notes`). Content is organized in indented "blocks" that can be extracted by tag for cross-document aggregation.
+Key concepts:
+- **Journals**: Daily notes in `{root}/journal/` (format: `YYYY-MM-DD.md`)
+- **Tags**: Short identifiers (`#tagname`) stored as `source/#tagname.md`
+- **Notes**: Hierarchical notes in `{root}/notes/`
+
+Tags are auto-converted to markdown links. Content is organized in indented "blocks" that can be extracted by tag for cross-document aggregation.
 
 ## Development Environment
 
@@ -15,58 +20,59 @@ nix develop   # Enter dev shell (provides luacheck, stylua, ripgrep, fd, fzf)
 nix run       # Launch wrapped Neovim with all plugins loaded
 ```
 
-If a source file cannot be found when running `nix run`, ensure the file has been added to the git index. Using `nix run` on a flake will not see files that are not added to the git repository.
+**Important**: If a source file cannot be found when running `nix run`, ensure the file has been added to the git index. Nix flakes only see git-tracked files.
 
 The bootstrap config `init.lua` is loaded automatically by the Nix-wrapped Neovim. Leader key is `,`, local leader is `\`.
 
 ## Build/Lint/Test Commands
 
-Example of running a test:
+### Run All Tests (required before commit)
+
+```bash
+make           # Runs lint + all tests (run before every commit)
+make test      # Run all tests only
+make lint      # Run luacheck only
+make format    # Run stylua formatter
+```
+
+### Run a Single Test
+
 ```bash
 nvim-pkms --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki-core_spec.lua' -c 'qa!'
 ```
 
-Run the full suite of tests using the Makefile: `make test`.
+Replace `davewiki-core_spec.lua` with the specific test file you want to run.
 
-Before every git commit, run `make` (default target).
+### Lint and Format
 
 ```bash
-# Lint all Lua source files
 luacheck -- lua/ plugin/ tests/
-
-# Format all Lua source files (run before every commit)
 stylua -- lua/ plugin/ tests/
 ```
-
-### Testing (plenary-nvim busted framework)
-
-Test files go in the `tests/` directory. Use plenary's busted-style DSL. Name test files using the convention `{module_name}_spec.lua`:
-
-```lua
-describe("davewiki.tags", function()
-    it("should parse tags from text", function()
-        local tags = require("davewiki.tags")
-        local result = tags.parse("#hello #world")
-        assert.equals(2, #result)
-    end)
-end)
-```
-
-Keep tests focused and independent. Mock `vim.*` functions when testing pure logic.
 
 ## File Structure
 
 ```
 davewiki-nvim/
-├── init.lua           -- Neovim bootstrap config (cmp, telescope, neo-tree, which-key)
-├── lua/               -- Core plugin source
-│   └── davewiki-core.lua  -- Main module (require("davewiki-core"))
-├── plugin/            -- Neovim auto-loaded scripts
-│   └── davewiki.lua  -- Plugin setup module
-├── doc/               -- Neovim help documentation
-├── tests/             -- Plenary busted test files
-├── flake.nix          -- Nix flake (build, devShell, dependencies)
-└── flake.lock         -- Pinned Nix dependency versions
+├── init.lua              -- Neovim bootstrap config (cmp, telescope, which-key)
+├── lua/                   -- Core plugin source
+│   ├── davewiki.lua       -- Main module with setup() (require("davewiki"))
+│   ├── davewiki-core.lua  -- Core utilities: tags, backlinks, ripgrep
+│   ├── davewiki-journal.lua -- Daily journal navigation
+│   ├── davewiki-telescope.lua -- Telescope pickers
+│   └── davewiki-cmp.lua   -- nvim-cmp source for tag completion
+├── plugin/                -- Neovim auto-loaded scripts (currently empty)
+├── scripts/
+│   ├── init.lua           -- Test bootstrap script
+│   └── manual-init.lua    -- Manual testing config
+├── tests/                 -- Plenary busted test files
+│   ├── davewiki_spec.lua
+│   ├── davewiki-core_spec.lua
+│   ├── davewiki-journal_spec.lua
+│   ├── davewiki-telescope_spec.lua
+│   └── davewiki-cmp_spec.lua
+├── flake.nix              -- Nix flake (build, devShell, dependencies)
+└── flake.lock             -- Pinned Nix dependency versions
 ```
 
 ## Code Style Guidelines
@@ -76,35 +82,52 @@ davewiki-nvim/
 | Entity | Convention | Examples |
 |---|---|---|
 | Variables, functions | `snake_case` | `get_current_buffer`, `parse_tags` |
-| Modules, filenames | `snake_case` | `davwiki/utils.lua` |
+| Modules, filenames | `snake_case` | `davewiki-core.lua` |
 | Table keys | `snake_case` | `{ root_dir = "..." }` |
 | Constants | `SCREAMING_SNAKE_CASE` | `DEFAULT_ROOT`, `MAX_DEPTH` |
+| Module table | `M` | `local M = {}` then `M.function_name = function()` |
 
 ### Formatting
 
 - 4 spaces for indentation (no tabs)
-- 120 character column width (soft limit)
-- Run `stylua` before committing (indent_width=4, column_width=120)
-- Prefer double quotes for strings
+- 120 character column width
+- Double quotes preferred for strings (`quote_style = "AutoPreferDouble"`)
+- Always use parentheses for function calls (`call_parentheses = "Always"`)
 
-These settings are enforced by `.stylua.toml` and `.luacheckrc` in the repo root.
+Settings enforced by `.stylua.toml` and `.luacheckrc`.
 
 ### Imports
 
 ```lua
--- Alias vim APIs at the top of each file
+-- Standard library aliases at the top
 local vim = vim
 local api = vim.api
 local fn = vim.fn
 
--- Require modules into local variables
-local davwiki = require("davwiki")
-local utils = require("davwiki.utils")
+-- Telescope modules (when needed)
+local pickers = require("telescope.pickers")
+local finders = require("telescope.finders")
+local conf = require("telescope.config").values
+
+-- Internal modules
+local wiki = require("davewiki-core")
+```
+
+### Module Pattern
+
+```lua
+local M = {}
+
+M.function_name = function(args)
+    -- implementation
+end
+
+return M
 ```
 
 ### Type Annotations
 
-Use LuaLS annotations for function signatures and complex types:
+Use LuaLS annotations for function signatures:
 
 ```lua
 ---@param root string The PKMS root directory path
@@ -112,6 +135,10 @@ Use LuaLS annotations for function signatures and complex types:
 local function resolve_root(root)
     ...
 end
+
+---@class davewiki.SetupOpts
+---@field wiki_root string Root directory for wiki files
+---@field telescope boolean Enable telescope integration (default: true)
 ```
 
 Prefer explicit `return nil` over implicit nil returns.
@@ -120,7 +147,8 @@ Prefer explicit `return nil` over implicit nil returns.
 
 - **User-facing errors**: `vim.notify("message", vim.log.levels.ERROR)`
 - **Internal functions**: Return `nil` or `nil, error_string` on failure
-- **Risky operations**: Wrap with `pcall`/`xpcall`:
+- **Risky operations**: Wrap with `pcall`/`xpcall`
+
 ```lua
 local ok, result = pcall(risky_function, arg)
 if not ok then
@@ -132,11 +160,37 @@ end
 
 - Prefer `vim.api.nvim_*` over `vim.cmd` for buffer/window/autocommand operations
 - Use `vim.keymap.set` for keymaps; always include `desc` for which-key:
+
 ```lua
-vim.keymap.set("n", "<leader>tt", function() ... end, { desc = "Toggle NeoTree" })
+vim.keymap.set("n", "<leader>wj", davewiki.journal.today, { desc = "Today's journal" })
 ```
+
 - Use `vim.opt` for settings (not `vim.o`)
-- Use `vim.uv` (libuv bindings) for filesystem operations
+- Use `vim.fn.expand()` for path expansion
+- Use `vim.fn.fnameescape()` when passing paths to `:edit` or similar commands
+
+## Testing (plenary-nvim busted framework)
+
+Test files go in `tests/` directory. Name test files `{module_name}_spec.lua`.
+
+```lua
+describe("davewiki-core", function()
+    describe("find_tags", function()
+        it("should return empty table when no tags found", function()
+            -- Mock vim.g and wiki.ripgrep
+            vim.g.davewiki_root = "/test/wiki"
+            local wiki = require("davewiki-core")
+            -- ... test implementation
+            assert.equals(0, #result)
+        end)
+    end)
+end)
+```
+
+**Testing tips**:
+- Mock `vim.*` functions when testing pure logic
+- Use `before_each`/`after_each` for setup/teardown
+- Keep tests focused and independent
 
 ## Dependencies (from flake.nix)
 
@@ -146,11 +200,9 @@ vim.keymap.set("n", "<leader>tt", function() ... end, { desc = "Toggle NeoTree" 
 |---|---|
 | `plenary-nvim` | Utility library and test framework |
 | `telescope-nvim` + `telescope-fzf-native-nvim` | Fuzzy search interface |
-| `nvim-cmp` + `cmp-buffer` + `cmp-path` + `cmp-nvim-lsp` + `cmp-nvim-lsp-signature-help` | Auto-completion |
-| `mattn-calendar-vim` | Calendar/date features for journals |
+| `nvim-cmp` + `cmp-buffer` + `cmp-path` + `cmp-nvim-lsp` | Auto-completion |
 | `which-key-nvim` | Keybinding discovery |
 | `vim-markdown` | Markdown syntax and features |
-| `lz-n` | Lazy loading framework (available but not yet used) |
 
 ### CLI Tools (in dev shell PATH)
 
@@ -159,6 +211,6 @@ vim.keymap.set("n", "<leader>tt", function() ... end, { desc = "Toggle NeoTree" 
 ## Configuration
 
 - Root directory: `vim.g.davewiki_root` (defaults to `~/vimwiki`)
-- Journals: `{root}/journals`
+- Journals: `{root}/journal/`
 - Tags: `{root}/source/#tagname.md`
-- Notes: `{root}/notes`
+- Notes: `{root}/notes/`
