@@ -561,5 +561,103 @@ describe("davewiki-core", function()
             local result = davwiki.create_tag_or_open_link()
             assert.is_false(result)
         end)
+
+        it("should reject path traversal attempts", function()
+            local captured_cmd = {}
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [link](../../../etc/passwd) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.resolve = function(path)
+                if path == test_wiki_root then
+                    return path
+                end
+                return "/etc/passwd"
+            end
+
+            local result = davwiki.create_tag_or_open_link()
+            assert.is_false(result)
+            assert.equals(0, #captured_cmd)
+        end)
+
+        it("should treat absolute paths as relative to wiki root", function()
+            local captured_cmd = {}
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [link](/etc/passwd) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.filereadable = function()
+                return 1
+            end
+            vim.fn.fnameescape = function(path)
+                return path
+            end
+            vim.fn.resolve = function(path)
+                return path
+            end
+
+            local result = davwiki.create_tag_or_open_link()
+            assert.is_true(result)
+            assert.is_true(#captured_cmd > 0)
+            assert.matches("edit", captured_cmd[1])
+            assert.matches("vimwiki/etc/passwd", captured_cmd[1])
+        end)
+    end)
+
+    describe("is_within_wiki_root", function()
+        local original_fn
+        local test_wiki_root
+
+        before_each(function()
+            original_fn = vim.fn
+            test_wiki_root = "/home/testuser/vimwiki"
+
+            vim.fn.expand = function(path)
+                if path == "~/vimwiki" or path == vim.g.davewiki_root then
+                    return test_wiki_root
+                end
+                return path
+            end
+            vim.fn.resolve = function(path)
+                return path
+            end
+        end)
+
+        after_each(function()
+            vim.fn = original_fn
+        end)
+
+        it("should return true for paths within wiki root", function()
+            assert.is_true(davwiki.is_within_wiki_root(test_wiki_root .. "/notes/test.md"))
+            assert.is_true(davwiki.is_within_wiki_root(test_wiki_root .. "/journal/2024-01-01.md"))
+            assert.is_true(davwiki.is_within_wiki_root(test_wiki_root .. "/source/#project.md"))
+        end)
+
+        it("should return false for paths outside wiki root", function()
+            assert.is_false(davwiki.is_within_wiki_root("/etc/passwd"))
+            assert.is_false(davwiki.is_within_wiki_root("/home/otheruser/vimwiki/test.md"))
+            assert.is_false(davwiki.is_within_wiki_root("/tmp/evil.md"))
+        end)
+
+        it("should return false for path traversal attempts", function()
+            vim.fn.resolve = function(path)
+                if path:match("%.%.") then
+                    return "/etc/passwd"
+                end
+                return path
+            end
+            assert.is_false(davwiki.is_within_wiki_root(test_wiki_root .. "/../../../etc/passwd"))
+            assert.is_false(davwiki.is_within_wiki_root(test_wiki_root .. "/../other/test.md"))
+        end)
     end)
 end)

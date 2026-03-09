@@ -288,6 +288,15 @@ M.convert_word_to_tag_link = function()
     return false
 end
 
+--- Checks if a path is within the wiki root (prevents path traversal).
+--- @param path string The path to check
+--- @return boolean true if path is within wiki root, false otherwise
+M.is_within_wiki_root = function(path)
+    local resolved = vim.fn.resolve(path)
+    local root = vim.fn.resolve(M.get_wiki_root())
+    return resolved:sub(1, #root) == root
+end
+
 --- Smart function that either opens a link under cursor or converts word to tag link.
 --- If cursor is over a markdown link, opens the link target in a new buffer.
 --- If cursor is not over a link, converts the word under cursor to a tag link.
@@ -332,6 +341,10 @@ M.create_tag_or_open_link = function()
             full_path = M.get_wiki_root() .. "/" .. decoded_url:sub(3)
         else
             full_path = M.get_wiki_root() .. "/" .. decoded_url
+        end
+
+        if not M.is_within_wiki_root(full_path) then
+            return false
         end
 
         if vim.fn.filereadable(full_path) == 1 then
