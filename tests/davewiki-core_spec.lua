@@ -343,6 +343,19 @@ describe("davewiki-core", function()
             assert.is_true(result)
             assert.equals("text [#tag](source/#tag.md)", new_line)
         end)
+
+        it("should return false when cursor is on existing markdown link", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "[#tag](source/#tag.md)"
+            end
+            vim.api.nvim_set_current_line = function() end
+
+            local result = davwiki.convert_word_to_tag_link()
+            assert.is_false(result)
+        end)
     end)
 
     describe("follow_tag_link", function()
@@ -657,6 +670,162 @@ describe("davewiki-core", function()
             end
             local backlinks = davwiki.get_backlinks("notes/target.md")
             assert.equals(0, #backlinks)
+        end)
+    end)
+
+    describe("create_tag_or_open_link", function()
+        local original_win_get_cursor
+        local original_buf_get_lines
+        local original_cmd
+        local original_fn
+        local original_get_current_line
+        local original_set_current_line
+        local test_wiki_root
+
+        before_each(function()
+            original_win_get_cursor = vim.api.nvim_win_get_cursor
+            original_buf_get_lines = vim.api.nvim_buf_get_lines
+            original_cmd = vim.cmd
+            original_fn = vim.fn
+            original_get_current_line = vim.api.nvim_get_current_line
+            original_set_current_line = vim.api.nvim_set_current_line
+            test_wiki_root = "/home/testuser/vimwiki"
+
+            vim.fn.expand = function(path)
+                if path == "~/vimwiki" or path == vim.g.davewiki_root then
+                    return test_wiki_root
+                end
+                if path:sub(1, #test_wiki_root) == test_wiki_root then
+                    return path
+                end
+                return path
+            end
+        end)
+
+        after_each(function()
+            vim.api.nvim_win_get_cursor = original_win_get_cursor
+            vim.api.nvim_buf_get_lines = original_buf_get_lines
+            vim.cmd = original_cmd
+            vim.fn = original_fn
+            vim.api.nvim_get_current_line = original_get_current_line
+            vim.api.nvim_set_current_line = original_set_current_line
+        end)
+
+        it("should open link when cursor is on markdown link", function()
+            local captured_cmd = {}
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [link](notes/test.md) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.filereadable = function()
+                return 1
+            end
+            vim.fn.fnameescape = function(path)
+                return path
+            end
+
+            local result = davwiki.create_tag_or_open_link()
+            assert.is_true(result)
+            assert.is_true(#captured_cmd > 0)
+            assert.matches("edit", captured_cmd[1])
+        end)
+
+        it("should create file when link target does not exist", function()
+            local captured_cmd = {}
+            local captured_mkdir = {}
+            local captured_file_content = {}
+
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 5 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "text [link](notes/new.md) more" }
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+            vim.fn.filereadable = function()
+                return 0
+            end
+            vim.fn.fnamemodify = function(path, modifier)
+                if modifier == ":h" then
+                    return path:gsub("/[^/]+$", "")
+                end
+                if modifier == ":t:r" then
+                    local name = path:match("[^/]+$")
+                    return name:gsub("%.md$", "")
+                end
+                return path
+            end
+            vim.fn.mkdir = function(dir, flags)
+                table.insert(captured_mkdir, dir)
+            end
+            vim.fn.fnameescape = function(path)
+                return path
+            end
+
+            local original_io_open = io.open
+            io.open = function(path, mode)
+                if mode == "w" then
+                    local mock_file = {
+                        write = function(self, content)
+                            table.insert(captured_file_content, content)
+                        end,
+                        close = function() end,
+                    }
+                    return mock_file
+                end
+                return nil
+            end
+
+            local result = davwiki.create_tag_or_open_link()
+            assert.is_true(result)
+            assert.is_true(#captured_cmd > 0)
+            assert.is_true(#captured_mkdir > 0)
+
+            io.open = original_io_open
+        end)
+
+        it("should convert word to tag link when not on link", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 1 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "#mytag" }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "#mytag"
+            end
+
+            local new_line
+            vim.api.nvim_set_current_line = function(line)
+                new_line = line
+            end
+
+            local result = davwiki.create_tag_or_open_link()
+            assert.is_true(result)
+            assert.equals("[#mytag](source/#mytag.md)", new_line)
+        end)
+
+        it("should return false when not on link and word does not start with #", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 2 }
+            end
+            vim.api.nvim_buf_get_lines = function()
+                return { "hello world" }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "hello world"
+            end
+            vim.api.nvim_set_current_line = function() end
+
+            local result = davwiki.create_tag_or_open_link()
+            assert.is_false(result)
         end)
     end)
 end)

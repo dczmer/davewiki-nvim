@@ -78,10 +78,6 @@ telescope.setup({
     },
 })
 telescope.load_extension("fzf")
-local builtin = require("telescope.builtin")
-vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope Find Files" })
-vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Telescope Live Grep" })
-vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Telescope Buffers" })
 
 -- ==================================================================
 -- WIKI KEY MAPPINGS (<leader>w = wiki)
@@ -99,3 +95,6 @@ vim.keymap.set("n", "<leader>wh", wiki_telescope.search_headings, { desc = "Wiki
 vim.keymap.set("n", "<leader>w#", wiki_telescope.search_tags, { desc = "Wiki: Browse tags" })
 vim.keymap.set("n", "<leader>wi", wiki_telescope.insert_tag, { desc = "Wiki: Insert tag" })
 vim.keymap.set("n", "<leader>wb", wiki_telescope.backlinks, { desc = "Wiki: Backlinks" })
+
+local wiki = require("davewiki-core")
+vim.keymap.set("n", "<CR>", wiki.create_tag_or_open_link, { desc = "Wiki: Open link or convert to tag" })

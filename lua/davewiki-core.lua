@@ -295,14 +295,38 @@ end
 --- Converts the word under the cursor to a markdown tag link.
 --- If the cursor is on a word starting with #, replaces it with a markdown link
 --- in the format [#tagname](source/#tagname.md). URL-encodes the tag name in the link.
+--- Returns false if cursor is already on a markdown link.
 --- Operates on the current buffer and modifies the current line in place.
---- @return boolean true if conversion succeeded, false if word doesn't start with #
+--- @return boolean true if conversion succeeded, false if word doesn't start with # or already on link
 M.convert_word_to_tag_link = function()
     local cursor = vim.api.nvim_win_get_cursor(0)
     local col = cursor[2]
 
     local line = vim.api.nvim_get_current_line()
     local line_length = #line
+
+    local function is_on_markdown_link()
+        local start_pos = 1
+        while true do
+            local link_start, link_end = line:find("%[[^%]]*%]%([^%)]*%)", start_pos)
+            if not link_start then
+                return false
+            end
+
+            local link_col_start = link_start - 1
+            local link_col_end = link_end - 1
+
+            if col >= link_col_start and col <= link_col_end then
+                return true
+            end
+
+            start_pos = link_end + 1
+        end
+    end
+
+    if is_on_markdown_link() then
+        return false
+    end
 
     local start_col = col
     local end_col = col
@@ -393,6 +417,74 @@ M.follow_tag_link = function()
     end
 
     return false
+end
+
+--- Smart function that either opens a link under cursor or converts word to tag link.
+--- If cursor is over a markdown link, opens the link target in a new buffer.
+--- If cursor is not over a link, converts the word under cursor to a tag link.
+--- @return boolean true if action succeeded, false otherwise
+M.create_tag_or_open_link = function()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local row = cursor[1]
+    local col = cursor[2]
+
+    local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1]
+    if not line then
+        return false
+    end
+
+    local function find_link_at_cursor()
+        local start_pos = 1
+        while true do
+            local link_start, link_end, link_text, link_url = line:find("%[([^%]]+)%]%(([^%)]+)%)", start_pos)
+            if not link_start then
+                return nil
+            end
+
+            local link_col_start = link_start - 1
+            local link_col_end = link_end - 1
+
+            if col >= link_col_start and col <= link_col_end then
+                return link_text, link_url
+            end
+
+            start_pos = link_end + 1
+        end
+    end
+
+    local _, link_url = find_link_at_cursor()
+    if link_url then
+        local decoded_url = M.url_decode(link_url)
+        local full_path
+
+        if decoded_url:match("^/") then
+            full_path = M.get_wiki_root() .. decoded_url
+        elseif decoded_url:match("^%./") then
+            full_path = M.get_wiki_root() .. "/" .. decoded_url:sub(3)
+        else
+            full_path = M.get_wiki_root() .. "/" .. decoded_url
+        end
+
+        if vim.fn.filereadable(full_path) == 1 then
+            vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+            return true
+        else
+            local dir = vim.fn.fnamemodify(full_path, ":h")
+            vim.fn.mkdir(dir, "p")
+
+            local filename = vim.fn.fnamemodify(full_path, ":t:r")
+            local file = io.open(full_path, "w")
+            if file then
+                file:write("# " .. filename .. "\n")
+                file:close()
+            end
+
+            vim.cmd("edit " .. vim.fn.fnameescape(full_path))
+            return true
+        end
+    end
+
+    return M.convert_word_to_tag_link()
 end
 
 return M
