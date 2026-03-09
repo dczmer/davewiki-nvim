@@ -14,7 +14,13 @@ function davwiki.setup(opts)
     end
 
     opts = opts or {}
-    vim.g.davewiki_root = opts.wiki_root or vim.g.davewiki_root
+
+    -- Silently sanitize wiki_root: remove shell metacharacters
+    local wiki_root = opts.wiki_root or vim.g.davewiki_root
+    if wiki_root then
+        wiki_root = wiki_root:gsub("[`$%(%)%;|%&%<%>%*%?%[%]%{%}%!%\\#]", "")
+    end
+    vim.g.davewiki_root = wiki_root
 
     if opts.telescope == nil or opts.telescope then
         davwiki.telescope = require("davewiki-telescope")

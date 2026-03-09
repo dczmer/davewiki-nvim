@@ -18,4 +18,25 @@ describe("davewiki plugin", function()
         local result = davwiki.setup()
         assert.is_table(result)
     end)
+
+    it("should sanitize shell metacharacters from wiki_root", function()
+        davwiki.setup({
+            wiki_root = "~/wiki; rm -rf ~ #",
+        })
+        assert.equals("~/wiki rm -rf ~ ", vim.g.davewiki_root)
+    end)
+
+    it("should remove backticks from wiki_root", function()
+        davwiki.setup({
+            wiki_root = "~/wiki`whoami`",
+        })
+        assert.equals("~/wikiwhoami", vim.g.davewiki_root)
+    end)
+
+    it("should remove pipe and semicolon from wiki_root", function()
+        davwiki.setup({
+            wiki_root = "~/wiki|cat /etc/passwd;echo",
+        })
+        assert.equals("~/wikicat /etc/passwdecho", vim.g.davewiki_root)
+    end)
 end)
