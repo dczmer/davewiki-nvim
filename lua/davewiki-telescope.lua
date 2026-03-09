@@ -13,7 +13,7 @@ local M = {}
 
 local function get_all_headings()
     local lines = wiki.ripgrep({
-        '"^#{1,6} .+"',
+        "^#{1,6} .+",
         "--line-number",
         "--with-filename",
         "--type=markdown",
@@ -115,8 +115,9 @@ M.search_tags = function(opts)
 end
 
 M.search_by_tag = function(tag)
+    local safe_tag = tag:gsub("[^%w%-_]", "")
     local lines = wiki.ripgrep({
-        '"#' .. tag .. '\\b"',
+        "#" .. safe_tag .. "\\b",
         "--files-with-matches",
         "--type=markdown",
         wiki.get_wiki_root(),
@@ -133,13 +134,13 @@ M.search_by_tag = function(tag)
     end
 
     if #results == 0 then
-        print("No files with tag #" .. tag)
+        print("No files with tag #" .. safe_tag)
         return
     end
 
     pickers
         .new({}, {
-            prompt_title = "Files with #" .. tag,
+            prompt_title = "Files with #" .. safe_tag,
             finder = finders.new_table({
                 results = results,
                 entry_maker = function(entry)

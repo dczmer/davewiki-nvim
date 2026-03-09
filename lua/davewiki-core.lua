@@ -64,23 +64,21 @@ M.extract_heading = function(filepath)
 end
 
 --- Executes a ripgrep command and returns the matching lines.
---- Constructs a shell command from the provided arguments and captures output.
+--- Uses vim.system() to avoid shell injection vulnerabilities.
 --- @param args table Array of string arguments to pass to ripgrep
 --- @return table Array of matching lines from ripgrep output, or empty table on failure
 M.ripgrep = function(args)
-    local cmd = "rg " .. table.concat(args, " ")
-    local handle = io.popen(cmd)
-    if not handle then
+    local result = vim.system({ "rg", unpack(args) }, { text = true }):wait()
+
+    if result.code ~= 0 then
         return {}
     end
 
-    local result = {}
-    for line in handle:lines() do
-        table.insert(result, line)
+    local lines = {}
+    for line in result.stdout:gmatch("[^\n]+") do
+        table.insert(lines, line)
     end
-    handle:close()
-
-    return result
+    return lines
 end
 
 -- ==================================================================
@@ -117,7 +115,7 @@ end
 M.find_tags = function()
     local lines = M.ripgrep({
         "--type=markdown",
-        "'\\[#'",
+        '\\[#',
         M.get_wiki_root(),
     })
 
@@ -186,7 +184,7 @@ M.get_backlinks = function(target_path)
         "--type=markdown",
         "--line-number",
         "--with-filename",
-        vim.fn.shellescape(target_path),
+        target_path,
         M.get_wiki_root(),
     })
 
