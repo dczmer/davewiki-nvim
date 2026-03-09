@@ -1,28 +1,6 @@
 -- Load this with `:luafile` when doing manual tests and not using `--headless`.
 
 -- setup cmp to test tag/link auto-completion
-
--- ==================================================================
--- SETUP
--- ==================================================================
-
---local setup = function()
---	wiki.setup()
---
---	local cmp = require("cmp")
---	cmp.register_source("wiki_tags", source.new())
---
---	cmp.setup.filetype("markdown", {
---		sources = cmp.config.sources({
---			{ name = "nvim_lsp", keyword_length = 1, priority = 1000 },
---			{ name = "wiki_tags", keyword_length = 1, priority = 800 },
---			{ name = "luasnip", keyword_length = 2, priority = 750 },
---			{ name = "buffer", keyword_length = 3, priority = 500 },
---			{ name = "path", priority = 250 },
---		}),
---	})
---end
-
 local cmp = require("cmp")
 require("davewiki-cmp").setup()
 cmp.setup({
@@ -104,3 +82,20 @@ local builtin = require("telescope.builtin")
 vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope Find Files" })
 vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Telescope Live Grep" })
 vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Telescope Buffers" })
+
+-- ==================================================================
+-- WIKI KEY MAPPINGS (<leader>w = wiki)
+-- ==================================================================
+
+local journal = require("davewiki-journal")
+local wiki_telescope = require("davewiki-telescope")
+
+vim.keymap.set("n", "<leader>wj", journal.today, { desc = "Wiki: Today's journal" })
+vim.keymap.set("n", "<leader>wy", journal.yesterday, { desc = "Wiki: Yesterday's journal" })
+vim.keymap.set("n", "<leader>wT", journal.tomorrow, { desc = "Wiki: Tomorrow's journal" })
+vim.keymap.set("n", "<leader>wJ", journal.browse, { desc = "Wiki: Browse journals" })
+vim.keymap.set("n", "<leader>wc", journal.calendar, { desc = "Wiki: Go to date" })
+vim.keymap.set("n", "<leader>wh", wiki_telescope.search_headings, { desc = "Wiki: Search headings" })
+vim.keymap.set("n", "<leader>w#", wiki_telescope.search_tags, { desc = "Wiki: Browse tags" })
+vim.keymap.set("n", "<leader>wi", wiki_telescope.insert_tag, { desc = "Wiki: Insert tag" })
+vim.keymap.set("n", "<leader>wb", wiki_telescope.backlinks, { desc = "Wiki: Backlinks" })
