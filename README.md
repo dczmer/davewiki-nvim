@@ -1,29 +1,62 @@
 # Overview
 
-This is a neovim plugin that implements a PKMS (Personal Knowledge Management System), similar to projects like Logseq or Obsidian.
+A Neovim plugin for Personal Knowledge Management, inspired by Logseq and Obsidian. Built with telescope.nvim for search and nvim-cmp for tag completion.
 
-Dependencies:
-- telescope-nvim: Provides interface for searching and grepping for documents, tags, and links in the vault.
-- nvim-cmp: Provides the auto-completion interface for inserting tags, filenames, and links.
-- mattn-calendar-vim: Provides date and calendar features used for daily journals.
-- (Optional) which-key-nvim: All key mappings use a `desc` property to describe it's function, which will be used by which-key.
+## Features
 
-Overview:
-- Configurable "root" directory via global variable `davewiki_root`.
-- Fast searching with FZF and ripgrep telescope integration.
-- Unstructured note taking system:
-    * Most notes are taken in daily journal files, which live under `{davewiki_root}/journals`
-    * "Tags" are short identifiers, starting with a `#`, which represent a thing or an idea. They are stored in a flat directory structure under `{davewiki_root}/tags`. Tags can have contents, but are mostly used to link multiple documents by finding the back-links for the tag file.
-    * Structured, traditional notes can be stored in a hierarchical folder structure under `{davewiki_root}/notes`.
-    * When a tag is inserted into a document, it will automatically be converted to a hyperlink to that file.
-    * Content is written in "blocks" - reverse indentation indicates that the indented section is grouped with the tags in the section above (indentation level).
-    * When we want to collect notes about a specific tag, we can search for all occurrences of that tag in files, and extract the blocks (and their child blocks) to compile a document with all notes relevant to that tag.
-    * Search for "back-links" from any markdown file, including "tag" files.
+- **Daily Journals**: Quick navigation to today/yesterday/tomorrow, browse all journals, or jump to any date
+- **Tag System**: Tags (`#tagname`) are auto-converted to markdown links pointing to `source/#tagname.md`
+- **Fast Search**: Ripgrep-powered telescope pickers for headings, tags, and backlinks
+- **Auto-completion**: nvim-cmp source for tag completion with occurrence counts
+- **Backlinks**: Find all files linking to the current document
 
-# Implementation
+## Directory Structure
 
-This project uses a nix flake to provide a devShell with all of the required dependencies. Use `nix develop` or `nix run` to interact with the application.
+```
+~/vimwiki/              # Configurable wiki root
+├── journal/            # Daily notes (YYYY-MM-DD.md)
+├── source/             # Tag files (#tagname.md)
+└── notes/              # Hierarchical notes
+```
 
-The flake packages an instance of neovim along with the dependencies required for this project, and a simple configuration file to bootstrap the plugin environment.
+## Dependencies
 
-This project uses `luacheck` for linting and `stylua` for auto-formatting files.
+- `telescope.nvim` - Search interface
+- `nvim-cmp` - Auto-completion (optional)
+- `ripgrep` - Fast text search
+- `which-key.nvim` - Keybinding help (optional)
+
+# Configuration
+
+```lua
+local davewiki = require("davewiki").setup({
+    telescope = true,  -- Enable telescope integration (default: true)
+    cmp = true,        -- Enable nvim-cmp integration (default: true)
+    journal = true,    -- Enable journal features (default: true)
+    wiki_root = "~/vimwiki"
+})
+
+-- nvim-cmp setup with wiki_tags source
+local cmp = require("cmp")
+davewiki.cmp.setup()
+cmp.setup({
+    -- ...
+    sources = cmp.config.sources({
+        { name = "nvim_lsp" },
+        { name = "wiki_tags" },  -- Provides tag completion
+        { name = "buffer" },
+        { name = "path" },
+    }),
+})
+
+-- Key mappings (<leader>w = wiki)
+vim.keymap.set("n", "<leader>wj", davewiki.journal.today, { desc = "Today's journal" })
+vim.keymap.set("n", "<leader>wy", davewiki.journal.yesterday, { desc = "Yesterday's journal" })
+vim.keymap.set("n", "<leader>wT", davewiki.journal.tomorrow, { desc = "Tomorrow's journal" })
+vim.keymap.set("n", "<leader>wJ", davewiki.journal.browse, { desc = "Browse journals" })
+vim.keymap.set("n", "<leader>wc", davewiki.journal.calendar, { desc = "Go to date" })
+vim.keymap.set("n", "<leader>wh", davewiki.telescope.search_headings, { desc = "Search headings" })
+vim.keymap.set("n", "<leader>w#", davewiki.telescope.search_tags, { desc = "Browse tags" })
+vim.keymap.set("n", "<leader>wi", davewiki.telescope.insert_tag, { desc = "Insert tag" })
+vim.keymap.set("n", "<leader>wb", davewiki.telescope.backlinks, { desc = "Backlinks" })
+```
