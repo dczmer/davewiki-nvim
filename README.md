@@ -10,6 +10,10 @@ A Neovim plugin for Personal Knowledge Management, inspired by Logseq and Obsidi
 - **Auto-completion**: nvim-cmp source for tag completion with occurrence counts
 - **Backlinks**: Find all files linking to the current document
 
+## Overview
+
+TODO: Add a bit about philosophy, organization, and an example session. Still need to implement the 'tag view' functionality first.
+
 ## Directory Structure
 
 ```
