@@ -77,7 +77,7 @@ describe("davewiki-core", function()
     end)
 
     describe("ripgrep", function()
-        it("should return empty table on popen failure", function()
+        it("should return empty table on vim.system failure", function()
             local results = davwiki.ripgrep({})
             assert.is_table(results)
             assert.equals(0, #results)
