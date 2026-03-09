@@ -126,25 +126,21 @@ end
 
 local function get_journal_entries()
     local entries = {}
-    local handle = io.popen("ls " .. vim.fn.shellescape(wiki.get_journal_dir()) .. "/*.md 2>/dev/null")
-    if not handle then
-        return entries
-    end
+    local files = vim.fn.glob(wiki.get_journal_dir() .. "/*.md", true, true)
 
-    for filepath in handle:lines() do
+    for _, filepath in ipairs(files) do
         local filename = vim.fn.fnamemodify(filepath, ":t")
         local time = parse_date(filename)
         if time then
-            entries[#entries + 1] = {
+            table.insert(entries, {
                 filepath = filepath,
                 filename = filename,
                 date = format_date(time),
                 day = get_day_name(time),
                 time = time,
-            }
+            })
         end
     end
-    handle:close()
 
     table.sort(entries, function(a, b)
         return a.time > b.time

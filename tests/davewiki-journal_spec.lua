@@ -200,17 +200,17 @@ describe("davewiki-journal", function()
     end)
 
     describe("browse", function()
-        local original_popen
+        local original_glob
         local original_print
         local captured_print
 
         before_each(function()
-            original_popen = io.popen
+            original_glob = vim.fn.glob
             original_print = print
             captured_print = {}
 
-            io.popen = function()
-                return nil
+            vim.fn.glob = function()
+                return {}
             end
 
             print = function(msg)
@@ -219,7 +219,7 @@ describe("davewiki-journal", function()
         end)
 
         after_each(function()
-            io.popen = original_popen
+            vim.fn.glob = original_glob
             print = original_print
         end)
 
@@ -227,6 +227,23 @@ describe("davewiki-journal", function()
             journal.browse()
             assert.is_true(#captured_print > 0)
             assert.equals("No journal entries found", captured_print[1])
+        end)
+
+        it("should use vim.fn.glob instead of shell command", function()
+            local glob_called = false
+            local glob_pattern = nil
+
+            vim.fn.glob = function(pattern, nosuf, list)
+                glob_called = true
+                glob_pattern = pattern
+                return {}
+            end
+
+            journal.browse()
+
+            assert.is_true(glob_called)
+            assert.matches("%.md$", glob_pattern)
+            assert.matches("journal", glob_pattern)
         end)
     end)
 
