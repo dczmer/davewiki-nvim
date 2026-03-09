@@ -176,6 +176,23 @@ describe("davewiki-core", function()
         end)
     end)
 
+    describe("build_tag_link", function()
+        it("should create valid tag link", function()
+            local link = davwiki.build_tag_link("mytag")
+            assert.equals("[#mytag](source/#mytag.md)", link)
+        end)
+
+        it("should URL encode special characters", function()
+            local link = davwiki.build_tag_link("my tag")
+            assert.equals("[#my tag](source/#my%20tag.md)", link)
+        end)
+
+        it("should remove control characters from tag name", function()
+            local link = davwiki.build_tag_link("tag\nwith\tcontrol")
+            assert.equals("[#tagwithcontrol](source/#tagwithcontrol.md)", link)
+        end)
+    end)
+
     describe("convert_word_to_tag_link", function()
         local original_win_get_cursor
         local original_get_current_line
@@ -266,6 +283,19 @@ describe("davewiki-core", function()
             end
             vim.api.nvim_get_current_line = function()
                 return "[#tag](source/#tag.md)"
+            end
+            vim.api.nvim_set_current_line = function() end
+
+            local result = davwiki.convert_word_to_tag_link()
+            assert.is_false(result)
+        end)
+
+        it("should return false when tag name is only control characters", function()
+            vim.api.nvim_win_get_cursor = function()
+                return { 1, 1 }
+            end
+            vim.api.nvim_get_current_line = function()
+                return "#\t"
             end
             vim.api.nvim_set_current_line = function() end
 

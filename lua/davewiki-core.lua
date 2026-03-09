@@ -222,8 +222,10 @@ end
 --- @param tag_name string The tag name to format
 --- @return string The formatted markdown tag link
 M.build_tag_link = function(tag_name)
-    local encoded_name = M.url_encode(tag_name)
-    local link_text = "#" .. tag_name
+    -- Remove control characters (newlines, tabs, null, etc.)
+    local safe_name = tag_name:gsub("[%c]", "")
+    local encoded_name = M.url_encode(safe_name)
+    local link_text = "#" .. safe_name
     return string.format("[%s](source/#%s.md)", link_text, encoded_name)
 end
 
@@ -278,6 +280,11 @@ M.convert_word_to_tag_link = function()
 
     if word:match("^#") then
         local tag_name = word:sub(2)
+        -- Remove control characters
+        tag_name = tag_name:gsub("[%c]", "")
+        if tag_name == "" then
+            return false
+        end
         local link = M.build_tag_link(tag_name)
 
         local new_line = line:sub(1, start_col) .. link .. line:sub(end_col + 1)
