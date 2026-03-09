@@ -43,43 +43,6 @@ end
 -- TELESCOPE PICKERS
 -- ==================================================================
 
-M.insert_link = function(opts)
-    opts = opts or {}
-
-    local files = wiki.find_tags()
-
-    pickers
-        .new(opts, {
-            prompt_title = "Insert Wiki Link",
-            finder = finders.new_table({
-                results = files,
-                entry_maker = function(entry)
-                    return {
-                        value = entry,
-                        display = entry.display,
-                        ordinal = entry.display,
-                        path = entry.path,
-                        title = entry.title,
-                    }
-                end,
-            }),
-            sorter = conf.generic_sorter(opts),
-            attach_mappings = function(prompt_bufnr)
-                actions.select_default:replace(function()
-                    local selection = action_state.get_selected_entry()
-                    actions.close(prompt_bufnr)
-
-                    if selection then
-                        local link = "[" .. selection.title .. "](" .. selection.path .. ")"
-                        vim.api.nvim_put({ link }, "c", true, true)
-                    end
-                end)
-                return true
-            end,
-        })
-        :find()
-end
-
 M.backlinks = function(opts)
     opts = opts or {}
 
@@ -115,7 +78,7 @@ end
 M.search_tags = function(opts)
     opts = opts or {}
 
-    local tags = wiki.get_all_tags()
+    local tags = wiki.find_tags()
 
     if #tags == 0 then
         print("No tags found")
@@ -263,15 +226,6 @@ M.search_headings = function(opts)
             previewer = conf.grep_previewer(opts),
         })
         :find()
-end
-
-M.wiki_grep = function(opts)
-    require("telescope.builtin").live_grep({
-        cwd = wiki.get_wiki_root(),
-        additional_args = function()
-            return { "--glob=!journal/" }
-        end,
-    })
 end
 
 return M
