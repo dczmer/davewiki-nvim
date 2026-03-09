@@ -1,0 +1,367 @@
+*davewiki.txt*    Personal Knowledge Management for Neovim
+
+                    DAVEWIKI - A PKM PLUGIN FOR NEOVIM
+                    Version: 1.0.0
+                    Author: Dave
+
+==============================================================================
+CONTENTS                                                    *davewiki-contents*
+
+    1. Introduction ............................ |davewiki-introduction|
+    2. Requirements ............................ |davewiki-requirements|
+    3. Installation ............................ |davewiki-installation|
+    4. Configuration ........................... |davewiki-configuration|
+    5. Commands ................................ |davewiki-commands|
+    6. Mappings ................................ |davewiki-mappings|
+    7. Modules ................................ |davewiki-modules|
+    8. Directory Structure ..................... |davewiki-directories|
+    9. Tags ................................... |davewiki-tags|
+    10. Journals ............................... |davewiki-journals|
+    11. Backlinks .............................. |davewiki-backlinks|
+    12. Autocompletion ......................... |davewiki-completion|
+
+==============================================================================
+1. INTRODUCTION                                         *davewiki-introduction*
+
+Davewiki is a Personal Knowledge Management System (PKMS) plugin for Neovim,
+inspired by Logseq and Obsidian. It provides:
+
+- Daily journal management with quick navigation
+- Tag-based organization with automatic link conversion
+- Fast searching via telescope.nvim integration
+- Backlink discovery across all wiki files
+- Autocompletion for tags via nvim-cmp
+
+==============================================================================
+2. REQUIREMENTS                                         *davewiki-requirements*
+
+Required:
+- Neovim >= 0.8.0
+- telescope.nvim (for search interface)
+- ripgrep (for fast text searching)
+
+Optional:
+- nvim-cmp (for tag autocompletion)
+- which-key.nvim (for keybinding discovery)
+
+==============================================================================
+3. INSTALLATION                                         *davewiki-installation*
+
+Using your plugin manager: >
+
+  -- lazy.nvim
+  {
+    "dczmer/davewiki-nvim",
+    dependencies = { "nvim-telescope/telescope.nvim" },
+    config = function()
+      require("davewiki").setup()
+    end,
+  }
+
+  -- packer.nvim
+  use {
+    "dczmer/davewiki-nvim",
+    requires = { "nvim-telescope/telescope.nvim" },
+    config = function()
+      require("davewiki").setup()
+    end,
+  }
+
+<
+==============================================================================
+4. CONFIGURATION                                       *davewiki-configuration*
+
+Setup with default options: >
+
+  local davewiki = require("davewiki").setup()
+
+<
+Setup with custom options: >
+
+  local davewiki = require("davewiki").setup({
+    wiki_root = "~/notes",     -- Wiki root directory (default: ~/vimwiki)
+    telescope = true,          -- Enable telescope integration (default: true)
+    cmp = true,                -- Enable nvim-cmp integration (default: true)
+    journal = true,            -- Enable journal features (default: true)
+  })
+
+<
+------------------------------------------------------------------------------
+4.1 Global Variables                              *davewiki-global-variables*
+
+                                                  *g:davewiki_root*
+g:davewiki_root
+  The root directory for all wiki files. Defaults to "~/vimwiki" if not set.
+
+==============================================================================
+5. COMMANDS                                               *davewiki-commands*
+
+This plugin does not define any user commands. All functionality is accessed
+through Lua functions and key mappings.
+
+==============================================================================
+6. MAPPINGS                                               *davewiki-mappings*
+
+Suggested key mappings (using <leader>w prefix): >
+
+  vim.keymap.set("n", "<leader>wj", davewiki.journal.today, { desc = "Today's journal" })
+  vim.keymap.set("n", "<leader>wy", davewiki.journal.yesterday, { desc = "Yesterday's journal" })
+  vim.keymap.set("n", "<leader>wT", davewiki.journal.tomorrow, { desc = "Tomorrow's journal" })
+  vim.keymap.set("n", "<leader>wJ", davewiki.journal.browse, { desc = "Browse journals" })
+  vim.keymap.set("n", "<leader>wc", davewiki.journal.calendar, { desc = "Go to date" })
+  vim.keymap.set("n", "<leader>wh", davewiki.telescope.search_headings, { desc = "Search headings" })
+  vim.keymap.set("n", "<leader>w#", davewiki.telescope.search_tags, { desc = "Browse tags" })
+  vim.keymap.set("n", "<leader>wi", davewiki.telescope.insert_tag, { desc = "Insert tag" })
+  vim.keymap.set("n", "<leader>wb", davewiki.telescope.backlinks, { desc = "Backlinks" })
+
+<
+==============================================================================
+7. MODULES                                                 *davewiki-modules*
+
+------------------------------------------------------------------------------
+7.1 davewiki                                                *davewiki-module*
+
+The main module returned by setup().
+
+  davewiki.setup({opts})                    *davewiki.setup()*
+    Initialize the plugin with configuration options.
+
+    Parameters: ~
+      {opts}  (table|nil) Configuration options
+        - wiki_root (string): Root directory for wiki files
+        - telescope (boolean): Enable telescope integration (default: true)
+        - cmp (boolean): Enable nvim-cmp integration (default: true)
+        - journal (boolean): Enable journal features (default: true)
+
+    Returns: ~
+      The davewiki module table with attached submodules
+
+  davewiki.journal                          *davewiki.journal*
+    Journal navigation module (see |davewiki-journal-module|)
+
+  davewiki.telescope                        *davewiki.telescope*
+    Telescope pickers module (see |davewiki-telescope-module|)
+
+  davewiki.cmp                              *davewiki.cmp*
+    nvim-cmp source module (see |davewiki-cmp-module|)
+
+------------------------------------------------------------------------------
+7.2 davewiki-core                                        *davewiki-core-module*
+
+Core utilities module (require("davewiki-core")).
+
+  M.get_wiki_root()                         *davewiki-core.get_wiki_root()*
+    Returns the expanded wiki root directory path.
+
+    Returns: ~
+      (string) The wiki root path
+
+  M.get_journal_dir()                       *davewiki-core.get_journal_dir()*
+    Returns the journal directory path.
+
+    Returns: ~
+      (string) Path to {wiki_root}/journal
+
+  M.get_relative_path({filepath})           *davewiki-core.get_relative_path()*
+    Convert absolute filepath to relative path from wiki root.
+
+    Parameters: ~
+      {filepath}  (string) The filepath to convert
+
+    Returns: ~
+      (string) Relative path from wiki root
+
+  M.get_current_wiki_path()                 *davewiki-core.get_current_wiki_path()*
+    Get relative path of current buffer.
+
+    Returns: ~
+      (string) Relative path of current buffer
+
+  M.find_tags()                             *davewiki-core.find_tags()*
+    Find all tags in the wiki.
+
+    Returns: ~
+      (table) Array of tag objects with:
+        - tag (string): tag name without # prefix
+        - count (number): occurrence count
+        - files (table): files containing this tag
+
+  M.get_backlinks({target_path})            *davewiki-core.get_backlinks()*
+    Find all backlinks to a path.
+
+    Parameters: ~
+      {target_path}  (string) Relative path to find backlinks for
+
+    Returns: ~
+      (table) Array of backlink objects with:
+        - path (string): file containing the link
+        - line (number): line number
+        - content (string): line content
+
+  M.build_tag_link({tag_name})              *davewiki-core.build_tag_link()*
+    Build a markdown tag link.
+
+    Parameters: ~
+      {tag_name}  (string) The tag name
+
+    Returns: ~
+      (string) Formatted markdown link: [#tag](source/#tag.md)
+
+  M.convert_word_to_tag_link()              *davewiki-core.convert_word_to_tag_link()*
+    Convert word under cursor to tag link.
+
+    Returns: ~
+      (boolean) true if converted, false otherwise
+
+  M.create_tag_or_open_link()               *davewiki-core.create_tag_or_open_link()*
+    Smart function: open link under cursor or convert word to tag link.
+
+    Returns: ~
+      (boolean) true if action succeeded, false otherwise
+
+------------------------------------------------------------------------------
+7.3 davewiki-journal                                    *davewiki-journal-module*
+
+Journal navigation module (require("davewiki-journal")).
+
+  M.today()                                 *davewiki-journal.today()*
+    Open today's journal. Creates file if it doesn't exist.
+
+  M.yesterday()                             *davewiki-journal.yesterday()*
+    Open yesterday's journal. Uses current buffer date if in a journal.
+
+  M.tomorrow()                              *davewiki-journal.tomorrow()*
+    Open tomorrow's journal. Uses current buffer date if in a journal.
+
+  M.browse({opts})                          *davewiki-journal.browse()*
+    Browse all journal entries with telescope.
+
+    Parameters: ~
+      {opts}  (table|nil) Telescope options
+
+  M.calendar()                              *davewiki-journal.calendar()*
+    Prompt for date input. Accepts YYYY-MM-DD or offset (+1, -1, etc).
+
+------------------------------------------------------------------------------
+7.4 davewiki-telescope                                *davewiki-telescope-module*
+
+Telescope pickers module (require("davewiki-telescope")).
+
+  M.backlinks({opts})                      *davewiki-telescope.backlinks()*
+    Show backlinks to current file.
+
+    Parameters: ~
+      {opts}  (table|nil) Telescope options
+
+  M.search_tags({opts})                    *davewiki-telescope.search_tags()*
+    Browse all tags. Selecting a tag shows files containing it.
+
+    Parameters: ~
+      {opts}  (table|nil) Telescope options
+
+  M.search_by_tag({tag})                   *davewiki-telescope.search_by_tag()*
+    Show files containing a specific tag.
+
+    Parameters: ~
+      {tag}  (string) Tag name without # prefix
+
+  M.insert_tag({opts})                     *davewiki-telescope.insert_tag()*
+    Browse tags and insert selected tag as link at cursor.
+
+    Parameters: ~
+      {opts}  (table|nil) Telescope options
+
+  M.search_headings({opts})                *davewiki-telescope.search_headings()*
+    Search all markdown headings in wiki.
+
+    Parameters: ~
+      {opts}  (table|nil) Telescope options
+
+------------------------------------------------------------------------------
+7.5 davewiki-cmp                                        *davewiki-cmp-module*
+
+nvim-cmp source module (require("davewiki-cmp")).
+
+  M.setup()                                 *davewiki-cmp.setup()*
+    Register the wiki_tags completion source with nvim-cmp.
+
+    Returns: ~
+      The source table
+
+To use, add "wiki_tags" to your cmp sources: >
+
+  require("cmp").setup({
+    sources = {
+      { name = "wiki_tags" },
+    },
+  })
+
+<
+==============================================================================
+8. DIRECTORY STRUCTURE                               *davewiki-directories*
+
+  ~/vimwiki/              Wiki root (configurable)
+  ├── journal/            Daily notes (YYYY-MM-DD.md)
+  ├── source/             Tag files (#tagname.md)
+  └── notes/              Hierarchical notes
+
+==============================================================================
+9. TAGS                                                       *davewiki-tags*
+
+Tags are short identifiers starting with #. When you type a tag like #project
+and press Enter (with create_tag_or_open_link), it converts to:
+
+  [#project](source/#project.md)
+
+This creates a link to source/#project.md. If the file doesn't exist, it's
+created with a heading matching the tag name.
+
+Tags enable:
+- Cross-linking documents by topic
+- Finding all notes about a topic via backlinks
+- Quick navigation between related content
+
+==============================================================================
+10. JOURNALS                                               *davewiki-journals*
+
+Daily journals are stored as {wiki_root}/journal/YYYY-MM-DD.md.
+
+Journal template: >
+  # YYYY-MM-DD - DayName
+
+  ## Tasks
+  - [ ]
+
+  ## Notes
+
+<
+Navigation:
+- today() opens/creates today's journal
+- yesterday()/tomorrow() navigate relative to current journal
+- calendar() prompts for specific date or offset
+
+==============================================================================
+11. BACKLINKS                                             *davewiki-backlinks*
+
+Backlinks show all files that link to the current file. The backlinks picker
+displays:
+- File path and line number
+- The line content containing the link
+
+Supported link formats:
+- Standard markdown: [text](path)
+- Wiki-style: [[path]]
+- Filename-only: [text](filename.md)
+
+==============================================================================
+12. AUTOCOMPLETION                                       *davewiki-completion*
+
+When nvim-cmp integration is enabled, typing # in a markdown file within the
+wiki root triggers tag completion. The completion menu shows:
+- Tag name with # prefix
+- Usage count in documentation
+
+Selecting a tag inserts the tag name (without #) at cursor position.
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
