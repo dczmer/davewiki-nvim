@@ -21,12 +21,14 @@ The bootstrap config `init.lua` is loaded automatically by the Nix-wrapped Neovi
 
 ## Build/Lint/Test Commands
 
-Run tests using `nix run`. The wrapped-version of neovim provided by flake.nix is called `nvim-pkms`.
-
 Example of running a test:
 ```bash
 nvim-pkms --headless -u scripts/init.lua -c 'PlenaryBustedFile tests/davewiki-core_spec.lua' -c 'qa!'
 ```
+
+Run the full suite of tests using the Makefile: `make test`.
+
+Before every git commit, run `make` (default target).
 
 ```bash
 # Lint all Lua source files

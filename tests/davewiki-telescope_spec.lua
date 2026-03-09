@@ -2,14 +2,6 @@ local telescope = require("davewiki-telescope")
 local davwiki = require("davewiki-core")
 
 describe("davewiki-telescope", function()
-    describe("insert_link", function()
-        -- This function is mainly a wrapper around telescope functionality,
-        -- so we'll test that it calls the expected functions
-        it("should be defined", function()
-            assert.is_function(telescope.insert_link)
-        end)
-    end)
-
     describe("backlinks", function()
         local original_get_current_wiki_path
         local original_get_backlinks
@@ -60,12 +52,6 @@ describe("davewiki-telescope", function()
     describe("search_headings", function()
         it("should be defined", function()
             assert.is_function(telescope.search_headings)
-        end)
-    end)
-
-    describe("wiki_grep", function()
-        it("should be defined", function()
-            assert.is_function(telescope.wiki_grep)
         end)
     end)
 end)

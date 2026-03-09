@@ -17,6 +17,13 @@ files["plugin/**/*.lua"] = {
     },
 }
 
+-- Main module can set vim.g globals
+files["lua/davewiki.lua"] = {
+    ignore = {
+        "122", -- Setting read-only field of global (vim.g.davewiki_root)
+    },
+}
+
 -- Test files use plenary busted globals
 files["tests/**/*.lua"] = {
     read_globals = {
