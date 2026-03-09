@@ -526,4 +526,137 @@ describe("davewiki-core", function()
             assert.is_true(result)
         end)
     end)
+
+    describe("get_backlinks", function()
+        local original_ripgrep
+        local original_fn_expand
+        local original_fn_fnamemodify
+        local original_fn_shellescape
+        local test_wiki_root
+
+        before_each(function()
+            original_ripgrep = davwiki.ripgrep
+            original_fn_expand = vim.fn.expand
+            original_fn_fnamemodify = vim.fn.fnamemodify
+            original_fn_shellescape = vim.fn.shellescape
+            test_wiki_root = "/home/testuser/vimwiki"
+            vim.fn.expand = function(path)
+                if path == "~/vimwiki" or path == vim.g.davewiki_root then
+                    return test_wiki_root
+                end
+                if path:sub(1, #test_wiki_root) == test_wiki_root then
+                    return path
+                end
+                return path
+            end
+            vim.fn.fnamemodify = function(path, modifier)
+                if modifier == ":t" then
+                    return path:match("[^/]+$") or path
+                end
+                return path
+            end
+            vim.fn.shellescape = function(s)
+                return "'" .. s .. "'"
+            end
+        end)
+
+        after_each(function()
+            davwiki.ripgrep = original_ripgrep
+            vim.fn.expand = original_fn_expand
+            vim.fn.fnamemodify = original_fn_fnamemodify
+            vim.fn.shellescape = original_fn_shellescape
+        end)
+
+        it("should return empty table for nil target_path", function()
+            local backlinks = davwiki.get_backlinks(nil)
+            assert.is_table(backlinks)
+            assert.equals(0, #backlinks)
+        end)
+
+        it("should return empty table for empty target_path", function()
+            local backlinks = davwiki.get_backlinks("")
+            assert.is_table(backlinks)
+            assert.equals(0, #backlinks)
+        end)
+
+        it("should return empty table when no backlinks found", function()
+            davwiki.ripgrep = function()
+                return {}
+            end
+            local backlinks = davwiki.get_backlinks("notes/target.md")
+            assert.is_table(backlinks)
+            assert.equals(0, #backlinks)
+        end)
+
+        it("should find backlinks with standard markdown links", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/source.md:10:See [link](notes/target.md) for more",
+                }
+            end
+            local backlinks = davwiki.get_backlinks("notes/target.md")
+            assert.equals(1, #backlinks)
+            assert.equals("notes/source.md", backlinks[1].path)
+            assert.equals(10, backlinks[1].line)
+            assert.matches("link", backlinks[1].content)
+        end)
+
+        it("should find backlinks with wiki-style links", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/source.md:5:Check [[notes/target.md]] here",
+                }
+            end
+            local backlinks = davwiki.get_backlinks("notes/target.md")
+            assert.equals(1, #backlinks)
+            assert.equals("notes/source.md", backlinks[1].path)
+        end)
+
+        it("should find backlinks with filename-only links", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/source.md:3:See [target](target.md)",
+                }
+            end
+            local backlinks = davwiki.get_backlinks("notes/target.md")
+            assert.equals(1, #backlinks)
+        end)
+
+        it("should exclude self-references", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/target.md:1:See [link](notes/target.md)",
+                }
+            end
+            local backlinks = davwiki.get_backlinks("notes/target.md")
+            assert.equals(0, #backlinks)
+        end)
+
+        it("should sort backlinks by path then line number", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/b.md:5:[link](notes/target.md)",
+                    test_wiki_root .. "/notes/a.md:10:[link](notes/target.md)",
+                    test_wiki_root .. "/notes/a.md:5:[link](notes/target.md)",
+                }
+            end
+            local backlinks = davwiki.get_backlinks("notes/target.md")
+            assert.equals(3, #backlinks)
+            assert.equals("notes/a.md", backlinks[1].path)
+            assert.equals(5, backlinks[1].line)
+            assert.equals("notes/a.md", backlinks[2].path)
+            assert.equals(10, backlinks[2].line)
+            assert.equals("notes/b.md", backlinks[3].path)
+        end)
+
+        it("should not match plain text occurrences", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/source.md:1:notes/target.md is a path",
+                }
+            end
+            local backlinks = davwiki.get_backlinks("notes/target.md")
+            assert.equals(0, #backlinks)
+        end)
+    end)
 end)

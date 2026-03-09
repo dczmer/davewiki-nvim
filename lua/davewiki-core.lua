@@ -232,6 +232,57 @@ M.find_tag_links = function(tag_name)
     return files
 end
 
+--- Finds all backlinks to a given path in the wiki.
+--- Searches all markdown files for links pointing to the specified path.
+--- @param target_path string The relative path to find backlinks for
+--- @return table Array of backlink objects, each with:
+---   - path: string - relative path of the file containing the link
+---   - line: number - line number where the link appears
+---   - content: string - the line content
+M.get_backlinks = function(target_path)
+    if not target_path or target_path == "" then
+        return {}
+    end
+
+    local filename = vim.fn.fnamemodify(target_path, ":t")
+    local lines = M.ripgrep({
+        "--type=markdown",
+        "--line-number",
+        "--with-filename",
+        vim.fn.shellescape(target_path),
+        M.get_wiki_root(),
+    })
+
+    local backlinks = {}
+    for _, line in ipairs(lines) do
+        local filepath, lnum, content = line:match("^([^:]+):(%d+):(.+)$")
+        if filepath and lnum and content then
+            local relative_path = M.get_relative_path(filepath)
+            if relative_path ~= target_path then
+                local has_link = content:match("%[[^%]]*%]%([^%)]*" .. vim.pesc(target_path) .. "[^%)]*%)")
+                    or content:match("%[%[" .. vim.pesc(target_path) .. "%]%]")
+                    or content:match("%[[^%]]*%]%([^%)]*" .. vim.pesc(filename) .. "[^%)]*%)")
+                if has_link then
+                    table.insert(backlinks, {
+                        path = relative_path,
+                        line = tonumber(lnum),
+                        content = content,
+                    })
+                end
+            end
+        end
+    end
+
+    table.sort(backlinks, function(a, b)
+        if a.path == b.path then
+            return a.line < b.line
+        end
+        return a.path < b.path
+    end)
+
+    return backlinks
+end
+
 --- Builds a markdown tag link from a tag name.
 --- @param tag_name string The tag name to format
 --- @return string The formatted markdown tag link
