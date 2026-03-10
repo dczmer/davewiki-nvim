@@ -12,6 +12,7 @@ vim.api.nvim_create_autocmd("BufReadPost", {
 vim.api.nvim_create_autocmd("FileType", {
     pattern = "qf",
     callback = function()
+        -- I'm not sure why this works, but CR doesn't jump to the file without it.
         vim.keymap.set("n", "<CR>", "<CR>", { buffer = true, desc = "Open file at quickfix entry" })
     end,
     desc = "Map Enter to open file in quickfix buffer",
