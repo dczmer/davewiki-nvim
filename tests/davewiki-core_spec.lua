@@ -973,5 +973,46 @@ describe("davewiki-core", function()
             assert.is_table(captured_qf_list)
             assert.equals(1, #captured_qf_list)
         end)
+
+        it("should include backlinks in quickfix list", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:See [#tag1](source/#tag1.md) here",
+                }
+            end
+
+            local result = davwiki.backlink_qfix("source/#tag1.md")
+            assert.is_true(result)
+            assert.is_table(captured_qf_list)
+            assert.equals(1, #captured_qf_list)
+            assert.is_nil(captured_qf_list[1].type)
+        end)
+
+        it("should mark unlinked tags as errors", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #tag1 here",
+                }
+            end
+
+            local result = davwiki.backlink_qfix("source/#tag1.md")
+            assert.is_true(result)
+            assert.equals("E", captured_qf_list[1].type)
+        end)
+
+        it("should include both backlinks and unlinked tags", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/a.md:5:See [#tag1](source/#tag1.md) here",
+                    test_wiki_root .. "/notes/b.md:10:This is #tag1 unlinked",
+                }
+            end
+
+            local result = davwiki.backlink_qfix("source/#tag1.md")
+            assert.is_true(result)
+            assert.equals(2, #captured_qf_list)
+            assert.is_nil(captured_qf_list[1].type)
+            assert.equals("E", captured_qf_list[2].type)
+        end)
     end)
 end)

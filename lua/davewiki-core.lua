@@ -446,9 +446,10 @@ M.unlinked_tags = function(tag_name)
     return unlinked
 end
 
---- Populates the quickfix list with unlinked occurrences of a tag.
+--- Populates the quickfix list with backlinks and unlinked occurrences of a tag.
 --- If the given path is a tag file (e.g., "source/#tag1.md"), extracts the tag name
---- and finds all unlinked instances of that tag in the wiki.
+--- and finds all backlinks and unlinked instances of that tag in the wiki.
+--- Unlinked tags are styled as errors in the quickfix list.
 --- @param filepath string The path to check (can be absolute or relative)
 --- @return boolean true if quickfix list was populated, false if not a tag file
 M.backlink_qfix = function(filepath)
@@ -463,14 +464,25 @@ M.backlink_qfix = function(filepath)
     end
 
     tag_name = M.url_decode(tag_name)
+    local backlinks = M.get_backlinks(relative_path)
     local unlinked = M.unlinked_tags(tag_name)
 
     local qf_items = {}
+
+    for _, item in ipairs(backlinks) do
+        table.insert(qf_items, {
+            filename = M.get_wiki_root() .. "/" .. item.path,
+            lnum = item.line,
+            text = item.content,
+        })
+    end
+
     for _, item in ipairs(unlinked) do
         table.insert(qf_items, {
             filename = M.get_wiki_root() .. "/" .. item.path,
             lnum = item.line,
             text = item.content,
+            type = "E",
         })
     end
 

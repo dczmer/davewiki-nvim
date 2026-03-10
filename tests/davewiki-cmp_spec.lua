@@ -85,7 +85,7 @@ describe("davewiki-cmp", function()
             local cmp_module = require("davewiki-cmp")
             local source = cmp_module.setup()
             local pattern = source.get_keyword_pattern()
-            assert.equals([[\#[a-zA-Z0-9_-]*]], pattern)
+            assert.equals([[\#[a-zA-Z0-9_-]+]], pattern)
         end)
     end)
 
