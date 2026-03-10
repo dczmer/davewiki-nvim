@@ -393,7 +393,6 @@ M.unlinked_tags = function(tag_name)
         "--type=markdown",
         "--line-number",
         "--with-filename",
-        "-F",
         tag_name,
         M.get_wiki_root(),
     })
@@ -405,11 +404,28 @@ M.unlinked_tags = function(tag_name)
             local relative_path = M.get_relative_path(filepath)
             local tag_link_pattern = "%[" .. vim.pesc(tag_name) .. "%]%([^%)]*source/"
             if not content:match(tag_link_pattern) then
-                local has_plain_tag = content:match("[^%w%-_~]" .. vim.pesc(tag_name) .. "[^%w%-_~]")
-                    or content:match("^" .. vim.pesc(tag_name) .. "[^%w%-_~]")
-                    or content:match("[^%w%-_~]" .. vim.pesc(tag_name) .. "$")
-                    or content:match("^" .. vim.pesc(tag_name) .. "$")
-                if has_plain_tag then
+                local found_plain = false
+                local search_start = 1
+                while not found_plain do
+                    local match_start, match_end = content:find(tag_name, search_start, true)
+                    if not match_start then
+                        break
+                    end
+
+                    local before_ok = (match_start == 1)
+                        or not content:sub(match_start - 1, match_start - 1):match("[%w%-_~]")
+
+                    local after_ok = (match_end == #content)
+                        or not content:sub(match_end + 1, match_end + 1):match("[%w%-_~]")
+
+                    if before_ok and after_ok then
+                        found_plain = true
+                    else
+                        search_start = match_start + 1
+                    end
+                end
+
+                if found_plain then
                     table.insert(unlinked, {
                         path = relative_path,
                         line = tonumber(lnum),
@@ -428,6 +444,39 @@ M.unlinked_tags = function(tag_name)
     end)
 
     return unlinked
+end
+
+--- Populates the quickfix list with unlinked occurrences of a tag.
+--- If the given path is a tag file (e.g., "source/#tag1.md"), extracts the tag name
+--- and finds all unlinked instances of that tag in the wiki.
+--- @param filepath string The path to check (can be absolute or relative)
+--- @return boolean true if quickfix list was populated, false if not a tag file
+M.backlink_qfix = function(filepath)
+    if not filepath or filepath == "" then
+        return false
+    end
+
+    local relative_path = M.get_relative_path(filepath)
+    local tag_name = relative_path:match("^source/(#[^/]+)%.md$")
+    if not tag_name then
+        return false
+    end
+
+    tag_name = M.url_decode(tag_name)
+    local unlinked = M.unlinked_tags(tag_name)
+
+    local qf_items = {}
+    for _, item in ipairs(unlinked) do
+        table.insert(qf_items, {
+            filename = M.get_wiki_root() .. "/" .. item.path,
+            lnum = item.line,
+            text = item.content,
+        })
+    end
+
+    vim.fn.setqflist(qf_items)
+    vim.cmd("copen")
+    return true
 end
 
 return M

@@ -819,5 +819,159 @@ describe("davewiki-core", function()
             local result = davwiki.unlinked_tags("#my-tag")
             assert.equals(1, #result)
         end)
+
+        it("should not match #tag2 when searching for #tag", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #tag2 here",
+                }
+            end
+            local result = davwiki.unlinked_tags("#tag")
+            assert.equals(0, #result)
+        end)
+
+        it("should not match #tags when searching for #tag", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #tags here",
+                }
+            end
+            local result = davwiki.unlinked_tags("#tag")
+            assert.equals(0, #result)
+        end)
+
+        it("should not match #tag-blah when searching for #tag", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #tag-blah here",
+                }
+            end
+            local result = davwiki.unlinked_tags("#tag")
+            assert.equals(0, #result)
+        end)
+
+        it("should match #tag and not #tag2 on same line", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #tag and #tag2 here",
+                }
+            end
+            local result = davwiki.unlinked_tags("#tag")
+            assert.equals(1, #result)
+        end)
+    end)
+
+    describe("backlink_qfix", function()
+        local original_ripgrep
+        local original_fn_expand
+        local original_fn_setqflist
+        local original_cmd
+        local test_wiki_root
+        local captured_qf_list
+        local captured_cmd
+
+        before_each(function()
+            original_ripgrep = davwiki.ripgrep
+            original_fn_expand = vim.fn.expand
+            original_fn_setqflist = vim.fn.setqflist
+            original_cmd = vim.cmd
+            test_wiki_root = "/home/testuser/vimwiki"
+            captured_qf_list = nil
+            captured_cmd = {}
+
+            vim.fn.expand = function(path)
+                if path == "~/vimwiki" or path == vim.g.davewiki_root then
+                    return test_wiki_root
+                end
+                if path:sub(1, #test_wiki_root) == test_wiki_root then
+                    return path
+                end
+                return path
+            end
+            vim.fn.setqflist = function(list)
+                captured_qf_list = list
+            end
+            vim.cmd = function(cmd_str)
+                table.insert(captured_cmd, cmd_str)
+            end
+        end)
+
+        after_each(function()
+            davwiki.ripgrep = original_ripgrep
+            vim.fn.expand = original_fn_expand
+            vim.fn.setqflist = original_fn_setqflist
+            vim.cmd = original_cmd
+        end)
+
+        it("should return false for nil filepath", function()
+            local result = davwiki.backlink_qfix(nil)
+            assert.is_false(result)
+        end)
+
+        it("should return false for empty filepath", function()
+            local result = davwiki.backlink_qfix("")
+            assert.is_false(result)
+        end)
+
+        it("should return false for non-tag files", function()
+            local result = davwiki.backlink_qfix("notes/test.md")
+            assert.is_false(result)
+        end)
+
+        it("should return false for files outside source directory", function()
+            local result = davwiki.backlink_qfix("journal/#tag.md")
+            assert.is_false(result)
+        end)
+
+        it("should extract tag name and populate quickfix list", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #tag1 here",
+                }
+            end
+
+            local result = davwiki.backlink_qfix("source/#tag1.md")
+            assert.is_true(result)
+            assert.is_table(captured_qf_list)
+            assert.equals(1, #captured_qf_list)
+            assert.equals(test_wiki_root .. "/notes/test.md", captured_qf_list[1].filename)
+            assert.equals(5, captured_qf_list[1].lnum)
+        end)
+
+        it("should handle URL-encoded tag names", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #my tag here",
+                }
+            end
+
+            local result = davwiki.backlink_qfix("source/#my%20tag.md")
+            assert.is_true(result)
+            assert.is_table(captured_qf_list)
+            assert.equals(1, #captured_qf_list)
+        end)
+
+        it("should open quickfix window", function()
+            davwiki.ripgrep = function()
+                return {}
+            end
+
+            davwiki.backlink_qfix("source/#tag1.md")
+            assert.is_true(#captured_cmd > 0)
+            assert.equals("copen", captured_cmd[1])
+        end)
+
+        it("should handle absolute paths", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #tag1 here",
+                }
+            end
+
+            local result = davwiki.backlink_qfix(test_wiki_root .. "/source/#tag1.md")
+            assert.is_true(result)
+            assert.is_table(captured_qf_list)
+            assert.equals(1, #captured_qf_list)
+        end)
     end)
 end)
