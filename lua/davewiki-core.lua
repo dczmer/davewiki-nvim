@@ -377,4 +377,57 @@ M.create_tag_or_open_link = function()
     return M.convert_word_to_tag_link()
 end
 
+--- Finds all instances of a tag that are not links to the tag file.
+--- Searches for #tagname patterns and excludes those that are markdown links.
+--- @param tag_name string The tag name to search for (with # prefix, e.g. "#mytag")
+--- @return table Array of unlinked tag objects, each with:
+---   - path: string - relative path of the file containing the unlinked tag
+---   - line: number - line number where the tag appears
+---   - content: string - the line content
+M.unlinked_tags = function(tag_name)
+    if not tag_name or tag_name == "" then
+        return {}
+    end
+
+    local lines = M.ripgrep({
+        "--type=markdown",
+        "--line-number",
+        "--with-filename",
+        "-F",
+        tag_name,
+        M.get_wiki_root(),
+    })
+
+    local unlinked = {}
+    for _, line in ipairs(lines) do
+        local filepath, lnum, content = line:match("^([^:]+):(%d+):(.+)$")
+        if filepath and lnum and content then
+            local relative_path = M.get_relative_path(filepath)
+            local tag_link_pattern = "%[" .. vim.pesc(tag_name) .. "%]%([^%)]*source/"
+            if not content:match(tag_link_pattern) then
+                local has_plain_tag = content:match("[^%w%-_~]" .. vim.pesc(tag_name) .. "[^%w%-_~]")
+                    or content:match("^" .. vim.pesc(tag_name) .. "[^%w%-_~]")
+                    or content:match("[^%w%-_~]" .. vim.pesc(tag_name) .. "$")
+                    or content:match("^" .. vim.pesc(tag_name) .. "$")
+                if has_plain_tag then
+                    table.insert(unlinked, {
+                        path = relative_path,
+                        line = tonumber(lnum),
+                        content = content,
+                    })
+                end
+            end
+        end
+    end
+
+    table.sort(unlinked, function(a, b)
+        if a.path == b.path then
+            return a.line < b.line
+        end
+        return a.path < b.path
+    end)
+
+    return unlinked
+end
+
 return M

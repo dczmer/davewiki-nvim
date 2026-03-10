@@ -690,4 +690,134 @@ describe("davewiki-core", function()
             assert.is_false(davwiki.is_within_wiki_root(test_wiki_root .. "/../other/test.md"))
         end)
     end)
+
+    describe("unlinked_tags", function()
+        local original_ripgrep
+        local original_fn_expand
+        local test_wiki_root
+
+        before_each(function()
+            original_ripgrep = davwiki.ripgrep
+            original_fn_expand = vim.fn.expand
+            test_wiki_root = "/home/testuser/vimwiki"
+            vim.fn.expand = function(path)
+                if path == "~/vimwiki" or path == vim.g.davewiki_root then
+                    return test_wiki_root
+                end
+                if path:sub(1, #test_wiki_root) == test_wiki_root then
+                    return path
+                end
+                return path
+            end
+        end)
+
+        after_each(function()
+            davwiki.ripgrep = original_ripgrep
+            vim.fn.expand = original_fn_expand
+        end)
+
+        it("should return empty table for nil tag_name", function()
+            local result = davwiki.unlinked_tags(nil)
+            assert.is_table(result)
+            assert.equals(0, #result)
+        end)
+
+        it("should return empty table for empty tag_name", function()
+            local result = davwiki.unlinked_tags("")
+            assert.is_table(result)
+            assert.equals(0, #result)
+        end)
+
+        it("should return empty table when no matches found", function()
+            davwiki.ripgrep = function()
+                return {}
+            end
+            local result = davwiki.unlinked_tags("#mytag")
+            assert.is_table(result)
+            assert.equals(0, #result)
+        end)
+
+        it("should find unlinked tags", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is #mytag here",
+                }
+            end
+            local result = davwiki.unlinked_tags("#mytag")
+            assert.equals(1, #result)
+            assert.equals("notes/test.md", result[1].path)
+            assert.equals(5, result[1].line)
+            assert.matches("#mytag", result[1].content)
+        end)
+
+        it("should exclude tags that are markdown links", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:This is [#mytag](source/#mytag.md) linked",
+                }
+            end
+            local result = davwiki.unlinked_tags("#mytag")
+            assert.equals(0, #result)
+        end)
+
+        it("should find multiple unlinked tags in different files", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/a.md:5:#mytag here",
+                    test_wiki_root .. "/notes/b.md:10:Text #mytag",
+                }
+            end
+            local result = davwiki.unlinked_tags("#mytag")
+            assert.equals(2, #result)
+            assert.equals("notes/a.md", result[1].path)
+            assert.equals("notes/b.md", result[2].path)
+        end)
+
+        it("should find tag at start of line", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:1:#mytag at start",
+                }
+            end
+            local result = davwiki.unlinked_tags("#mytag")
+            assert.equals(1, #result)
+        end)
+
+        it("should find tag at end of line", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:1:Text with #mytag",
+                }
+            end
+            local result = davwiki.unlinked_tags("#mytag")
+            assert.equals(1, #result)
+        end)
+
+        it("should sort results by path then line number", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/b.md:5:Text #mytag",
+                    test_wiki_root .. "/notes/a.md:10:Text #mytag",
+                    test_wiki_root .. "/notes/a.md:5:Text #mytag",
+                }
+            end
+            local result = davwiki.unlinked_tags("#mytag")
+            assert.equals(3, #result)
+            assert.equals("notes/a.md", result[1].path)
+            assert.equals(5, result[1].line)
+            assert.equals("notes/a.md", result[2].path)
+            assert.equals(10, result[2].line)
+            assert.equals("notes/b.md", result[3].path)
+        end)
+
+        it("should handle tag names with special characters", function()
+            davwiki.ripgrep = function()
+                return {
+                    test_wiki_root .. "/notes/test.md:5:Text #my-tag here",
+                }
+            end
+            local result = davwiki.unlinked_tags("#my-tag")
+            assert.equals(1, #result)
+        end)
+    end)
 end)
