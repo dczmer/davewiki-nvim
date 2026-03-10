@@ -184,6 +184,7 @@ M.get_backlinks = function(target_path)
         "--type=markdown",
         "--line-number",
         "--with-filename",
+        "-F",
         target_path,
         M.get_wiki_root(),
     })
@@ -268,11 +269,11 @@ M.convert_word_to_tag_link = function()
     local start_col = col
     local end_col = col
 
-    while start_col > 0 and line:sub(start_col, start_col):match("[%w%-_#]") do
+    while start_col > 0 and line:sub(start_col, start_col):match("[%w%p#]") do
         start_col = start_col - 1
     end
 
-    while end_col < line_length and line:sub(end_col + 1, end_col + 1):match("[%w%-_#]") do
+    while end_col < line_length and line:sub(end_col + 1, end_col + 1):match("[%w%p#]") do
         end_col = end_col + 1
     end
 

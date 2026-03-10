@@ -15,7 +15,7 @@ source.new = function()
 end
 
 source.get_keyword_pattern = function()
-    return [[\#[a-zA-Z0-9_-]*]]
+    return [[\#[a-zA-Z0-9_-]+]]
 end
 
 source.is_available = function()
