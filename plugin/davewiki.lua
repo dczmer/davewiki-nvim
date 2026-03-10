@@ -8,3 +8,11 @@ vim.api.nvim_create_autocmd("BufReadPost", {
     end,
     desc = "Populate quickfix list with unlinked tags when opening a tag file",
 })
+
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "qf",
+    callback = function()
+        vim.keymap.set("n", "<CR>", "<CR>", { buffer = true, desc = "Open file at quickfix entry" })
+    end,
+    desc = "Map Enter to open file in quickfix buffer",
+})
